@@ -15,7 +15,8 @@ find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 
 # Add your executable
-add_executable(rasterizer src/main.cpp)
+add_executable(rasterizer src/main.cpp
+        src/App.hpp)
 
 # Add target to executable name
 string(TOLOWER "${CMAKE_BUILD_TYPE}" BUILD_TYPE_LOWER)
