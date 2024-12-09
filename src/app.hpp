@@ -105,7 +105,7 @@ namespace rasterizer {
         SDL_Texture* framebufferTexture = nullptr;
 
         static bool initializeSDL() {
-            if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
+            if (SDL_Init(SDL_INIT_EVERYTHING) != EXIT_SUCCESS) {
                 std::printf("SDL_Init Error: %s\n", SDL_GetError());
                 return false;
             }
@@ -183,7 +183,7 @@ namespace rasterizer {
                                                   static_cast<int>(sizeof(uint32_t) * framebufferWidth));
             const auto renderCopy = SDL_RenderCopy(renderer, framebufferTexture, nullptr, nullptr);
 
-            if (update != 0 || renderCopy != 0) {
+            if (update != EXIT_SUCCESS || renderCopy != EXIT_SUCCESS) {
                 throw std::runtime_error("Failed to render framebuffer texture");
             }
         }
