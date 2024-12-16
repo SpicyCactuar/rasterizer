@@ -8,32 +8,33 @@
 #include <SDL_render.h>
 
 namespace rasterizer {
+    static constexpr std::uint32_t defaultWindowWidth = 1600;
+    static constexpr std::uint32_t defaultWindowHeight = 1075;
+
     class Application {
     public:
         bool isRunning = false;
 
-        explicit Application(const std::string_view& title,
-                             const std::uint32_t windowWidth,
-                             const std::uint32_t windowHeight) {
+        explicit Application(const std::string_view& title) {
             initializeSDL();
-            window = createWindow(title, windowWidth, windowHeight);
+            window = createWindow(title, defaultWindowWidth, defaultWindowHeight);
             renderer = createRenderer(window);
 
             if (window == nullptr || renderer == nullptr) {
                 throw std::runtime_error("Failed to initialize SDL window");
             }
 
-            framebuffer = static_cast<std::uint32_t*>(std::calloc(windowWidth * windowHeight, sizeof(uint32_t)));
-            if (framebuffer == nullptr) {
-                throw std::runtime_error("Failed to allocate framebuffer");
-            }
-            framebufferWidth = windowWidth;
-            framebufferHeight = windowHeight;
+            std::int32_t windowWidth, windowHeight;
+            SDL_GetWindowSize(window, &windowWidth, &windowHeight);
 
-            framebufferTexture = createFramebufferTexture(renderer, windowWidth, windowHeight);
+            framebufferWidth = static_cast<std::uint32_t>(windowWidth);
+            framebufferHeight = static_cast<std::uint32_t>(windowHeight);
 
-            if (framebufferTexture == nullptr) {
-                throw std::runtime_error("Failed to create framebufferTexture");
+            framebuffer = createFramebuffer(framebufferWidth, framebufferHeight);
+            framebufferTexture = createFramebufferTexture(renderer, framebufferWidth, framebufferHeight);
+
+            if (framebuffer == nullptr || framebufferTexture == nullptr) {
+                throw std::runtime_error("Failed to initialize framebuffer");
             }
 
             isRunning = true;
@@ -83,12 +84,9 @@ namespace rasterizer {
         }
 
         void render() const {
-            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-            SDL_RenderClear(renderer);
-
             clearFramebuffer();
+            drawGrid();
             renderFramebufferTexture();
-
             SDL_RenderPresent(renderer);
         }
 
@@ -125,8 +123,16 @@ namespace rasterizer {
         static SDL_Window* createWindow(const std::string_view& title,
                                         const std::uint32_t width,
                                         const std::uint32_t height) {
+            SDL_DisplayMode displayMode;
+            const auto displayModeQuery = SDL_GetDesktopDisplayMode(0, &displayMode);
+            const bool fullscreen = displayModeQuery == EXIT_SUCCESS;
+
+            const std::uint32_t windowWidth = fullscreen && displayMode.w > 0 ? displayMode.w : width;
+            const std::uint32_t windowHeight = fullscreen && displayMode.h > 0 ? displayMode.h : height;
+
             SDL_Window* window = SDL_CreateWindow(title.data(),
-                                                  SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height,
+                                                  SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                                  windowWidth, windowHeight,
                                                   SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALLOW_HIGHDPI);
 
             if (window == nullptr) {
@@ -148,6 +154,11 @@ namespace rasterizer {
             return renderer;
         }
 
+        static std::uint32_t* createFramebuffer(const std::uint32_t width, const std::uint32_t height) {
+            return static_cast<std::uint32_t*>(
+                std::calloc(width * height, sizeof(std::uint32_t)));
+        }
+
         static SDL_Texture* createFramebufferTexture(SDL_Renderer* renderer,
                                                      const std::uint32_t width,
                                                      const std::uint32_t height) {
@@ -165,15 +176,26 @@ namespace rasterizer {
         }
 
         void clearFramebuffer() const {
-            static constexpr std::uint32_t clearColor = 0xFF7C3AED;
-            static constexpr std::uint32_t circleColor = 0xFF2E1065;
+            // Clear renderer
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+            SDL_RenderClear(renderer);
 
-            // Clear framebuffer and draw a 100 pixel radius circle in the center
-            for (int j = 0; j < framebufferHeight; ++j) {
-                for (int i = 0; i < framebufferWidth; ++i) {
-                    const int x = i - framebufferWidth / 2;
-                    const int y = j - framebufferHeight / 2;
-                    framebuffer[i + j * framebufferWidth] = std::sqrt(x*x + y*y) <= 100 ? circleColor : clearColor;
+            // Clear framebuffer contents
+            static constexpr std::uint32_t clearColor = 0xFF2E1065;
+
+            for (std::uint32_t row = 0; row < framebufferHeight; ++row) {
+                for (std::uint32_t column = 0; column < framebufferWidth; ++column) {
+                    framebuffer[row * framebufferWidth + column] = clearColor;
+                }
+            }
+        }
+
+        void drawGrid() const {
+            static constexpr std::uint32_t gridColor = 0xFF7C3AED;
+
+            for (std::uint32_t row = 0; row < framebufferHeight; row += 10) {
+                for (std::uint32_t column = 0; column < framebufferWidth; column += 10) {
+                    framebuffer[row * framebufferWidth + column] = gridColor;
                 }
             }
         }

@@ -1,16 +1,13 @@
 #include <SDL2/SDL.h>
 #include <cstdio>
-#include <cstdint>
 #include <iostream>
 
 #include "app.hpp"
 
 int main(int argc, char* argv[]) try {
     static constexpr std::string_view title = "Hello Rasterizer";
-    static constexpr std::uint32_t windowWidth = 1200;
-    static constexpr std::uint32_t windowHeight = 675;
 
-    rasterizer::Application app(title, windowWidth, windowHeight);
+    rasterizer::Application app(title);
 
     while (app.isRunning) {
         app.processInput();
