@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstdint>
 #include <stdexcept>
+#include <vector>
 
 #include <SDL.h>
 #include <SDL_render.h>
@@ -83,11 +84,34 @@ namespace rasterizer {
             // TODO: Implement
         }
 
+        void drawRectangles() const {
+            static constexpr std::uint32_t rectangleColor = 0xFF7C3AED;
+
+            for (const auto& rectangle : rectangles) {
+                const std::uint32_t endX = std::min(
+                    static_cast<std::uint32_t>(rectangle.x + rectangle.w), framebufferWidth);
+                const std::uint32_t endY = std::min(
+                    static_cast<std::uint32_t>(rectangle.y + rectangle.h), framebufferHeight);
+
+                for (std::uint32_t row = rectangle.x; row < endY; ++row) {
+                    for (std::uint32_t column = rectangle.y; column < endX; ++column) {
+                        framebuffer[row * framebufferWidth + column] = rectangleColor;
+                    }
+                }
+            }
+        }
+
         void render() const {
             clearFramebuffer();
             drawGrid();
+            drawRectangles();
             renderFramebufferTexture();
             SDL_RenderPresent(renderer);
+        }
+
+        void drawRectangleOnRender(const std::uint32_t positionX, const std::uint32_t positionY,
+                                   const std::uint32_t width, const std::uint32_t height) {
+            rectangles.emplace_back(positionX, positionY, width, height);
         }
 
     private:
@@ -101,6 +125,8 @@ namespace rasterizer {
         std::uint32_t* framebuffer = nullptr;
         std::uint32_t framebufferWidth, framebufferHeight;
         SDL_Texture* framebufferTexture = nullptr;
+
+        std::vector<SDL_Rect> rectangles;
 
         static bool initializeSDL() {
             if (SDL_Init(SDL_INIT_EVERYTHING) != EXIT_SUCCESS) {

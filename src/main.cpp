@@ -11,6 +11,9 @@ int main(int argc, char* argv[]) try {
 
     while (app.isRunning) {
         app.processInput();
+        constexpr std::uint32_t rectangleWidth = 1200, rectangleHeight = 750;
+        constexpr std::uint32_t positionX = 720, positionY = 450;
+        app.drawRectangleOnRender(positionX, positionY, rectangleWidth, rectangleHeight);
         app.update();
         app.render();
     }
