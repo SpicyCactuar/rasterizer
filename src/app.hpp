@@ -86,23 +86,6 @@ namespace rasterizer {
             // TODO: Implement
         }
 
-        void drawRectangles() const {
-            static constexpr std::uint32_t rectangleColor = 0xFF7C3AED;
-
-            for (const auto& rectangle : rectangles) {
-                const std::uint32_t endX = std::min(
-                    static_cast<std::uint32_t>(rectangle.x + rectangle.w), framebufferWidth);
-                const std::uint32_t endY = std::min(
-                    static_cast<std::uint32_t>(rectangle.y + rectangle.h), framebufferHeight);
-
-                for (std::uint32_t row = rectangle.x; row < endY; ++row) {
-                    for (std::uint32_t column = rectangle.y; column < endX; ++column) {
-                        framebuffer[row * framebufferWidth + column] = rectangleColor;
-                    }
-                }
-            }
-        }
-
         void render() const {
             clearFramebuffer();
             drawGrid();
@@ -111,8 +94,8 @@ namespace rasterizer {
             SDL_RenderPresent(renderer);
         }
 
-        void drawRectangleOnRender(const std::uint32_t positionX, const std::uint32_t positionY,
-                                   const std::uint32_t width, const std::uint32_t height) {
+        void emplaceRectangle(const std::uint32_t positionX, const std::uint32_t positionY,
+                              const std::uint32_t width, const std::uint32_t height) {
             rectangles.emplace_back(positionX, positionY, width, height);
         }
 
@@ -224,6 +207,23 @@ namespace rasterizer {
             for (std::uint32_t row = 0; row < framebufferHeight; row += 10) {
                 for (std::uint32_t column = 0; column < framebufferWidth; column += 10) {
                     framebuffer[row * framebufferWidth + column] = gridColor;
+                }
+            }
+        }
+
+        void drawRectangles() const {
+            static constexpr std::uint32_t rectangleColor = 0xFF7C3AED;
+
+            for (const auto& rectangle : rectangles) {
+                const std::uint32_t endX = std::min(
+                    static_cast<std::uint32_t>(rectangle.x + rectangle.w), framebufferWidth);
+                const std::uint32_t endY = std::min(
+                    static_cast<std::uint32_t>(rectangle.y + rectangle.h), framebufferHeight);
+
+                for (std::uint32_t row = rectangle.x; row < endY; ++row) {
+                    for (std::uint32_t column = rectangle.y; column < endX; ++column) {
+                        framebuffer[row * framebufferWidth + column] = rectangleColor;
+                    }
                 }
             }
         }
