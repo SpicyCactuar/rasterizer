@@ -3,10 +3,11 @@
 #include <cstdio>
 #include <cstdint>
 #include <stdexcept>
-#include <vector>
 
 #include <SDL.h>
 #include <SDL_render.h>
+
+#include "scene.hpp"
 
 namespace rasterizer {
     static constexpr std::uint32_t defaultWindowWidth = 1600;
@@ -86,17 +87,12 @@ namespace rasterizer {
             // TODO: Implement
         }
 
-        void render() const {
+        void render(const Scene& scene) const {
             clearFramebuffer();
             drawGrid();
-            drawRectangles();
+            drawRectangles(scene);
             renderFramebufferTexture();
             SDL_RenderPresent(renderer);
-        }
-
-        void emplaceRectangle(const std::uint32_t positionX, const std::uint32_t positionY,
-                              const std::uint32_t width, const std::uint32_t height) {
-            rectangles.emplace_back(positionX, positionY, width, height);
         }
 
     private:
@@ -110,8 +106,6 @@ namespace rasterizer {
         std::uint32_t* framebuffer = nullptr;
         std::uint32_t framebufferWidth, framebufferHeight;
         SDL_Texture* framebufferTexture = nullptr;
-
-        std::vector<SDL_Rect> rectangles;
 
         static bool initializeSDL() {
             if (SDL_Init(SDL_INIT_EVERYTHING) != EXIT_SUCCESS) {
@@ -211,10 +205,10 @@ namespace rasterizer {
             }
         }
 
-        void drawRectangles() const {
+        void drawRectangles(const Scene& scene) const {
             static constexpr std::uint32_t rectangleColor = 0xFF7C3AED;
 
-            for (const auto& rectangle : rectangles) {
+            for (const auto& rectangle : scene.rectangles()) {
                 const std::uint32_t endX = std::min(
                     static_cast<std::uint32_t>(rectangle.x + rectangle.w), framebufferWidth);
                 const std::uint32_t endY = std::min(
