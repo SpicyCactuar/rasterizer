@@ -8,8 +8,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Set runtime output directory to the project's bin folder
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
-# Find packages
+# Find SDL2 and GLM packages
+# TODO: Fallback to FetchContent if packages are not found
 find_package(SDL2 REQUIRED)
+find_package(GLM REQUIRED)
 
 # Add your executable
 add_executable(rasterizer src/main.cpp)

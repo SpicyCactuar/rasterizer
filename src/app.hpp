@@ -90,7 +90,7 @@ namespace rasterizer {
         void render(const Scene& scene) const {
             clearFramebuffer();
             drawGrid();
-            drawRectangles(scene);
+            drawScene(scene);
             renderFramebufferTexture();
             SDL_RenderPresent(renderer);
         }
@@ -137,7 +137,8 @@ namespace rasterizer {
 
             SDL_Window* window = SDL_CreateWindow(title.data(),
                                                   SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                                  windowWidth, windowHeight,
+                                                  static_cast<std::int32_t>(windowWidth),
+                                                  static_cast<std::int32_t>(windowHeight),
                                                   SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALLOW_HIGHDPI);
 
             if (window == nullptr) {
@@ -170,7 +171,8 @@ namespace rasterizer {
             SDL_Texture* framebufferTexture = SDL_CreateTexture(renderer,
                                                                 SDL_PIXELFORMAT_ARGB8888,
                                                                 SDL_TEXTUREACCESS_STREAMING,
-                                                                width, height);
+                                                                static_cast<std::int32_t>(width),
+                                                                static_cast<std::int32_t>(height));
 
             if (framebufferTexture == nullptr) {
                 std::printf("SDL_CreateTexture Error: %s\n", SDL_GetError());
@@ -183,6 +185,34 @@ namespace rasterizer {
         void drawPixel(const std::uint32_t row, const std::uint32_t column, const std::uint32_t& color) const {
             if (row < framebufferHeight && column < framebufferWidth) {
                 framebuffer[row * framebufferWidth + column] = color;
+            }
+        }
+
+        void drawRectangle(const SDL_Rect rectangle) const {
+            static constexpr std::uint32_t rectangleColor = 0xFF7C3AED;
+
+            const std::uint32_t endX = std::min(
+                static_cast<std::uint32_t>(rectangle.x + rectangle.w), framebufferWidth);
+            const std::uint32_t endY = std::min(
+                static_cast<std::uint32_t>(rectangle.y + rectangle.h), framebufferHeight);
+
+            for (std::uint32_t row = rectangle.y; row < endY; ++row) {
+                for (std::uint32_t column = rectangle.x; column < endX; ++column) {
+                    drawPixel(row, column, rectangleColor);
+                }
+            }
+        }
+
+        void drawScene(const Scene& scene) const {
+            for (const auto& point : scene.cubePoints()) {
+                drawRectangle(SDL_Rect{
+                    .x = static_cast<std::int32_t>(point.x * scene.fov) +
+                         static_cast<std::int32_t>(framebufferWidth / 2),
+                    .y = static_cast<std::int32_t>(point.y * scene.fov) +
+                         static_cast<std::int32_t>(framebufferHeight / 2),
+                    .w = 10,
+                    .h = 10
+                });
             }
         }
 
@@ -211,26 +241,9 @@ namespace rasterizer {
             }
         }
 
-        void drawRectangles(const Scene& scene) const {
-            static constexpr std::uint32_t rectangleColor = 0xFF7C3AED;
-
-            for (const auto& rectangle : scene.rectangles()) {
-                const std::uint32_t endX = std::min(
-                    static_cast<std::uint32_t>(rectangle.x + rectangle.w), framebufferWidth);
-                const std::uint32_t endY = std::min(
-                    static_cast<std::uint32_t>(rectangle.y + rectangle.h), framebufferHeight);
-
-                for (std::uint32_t row = rectangle.x; row < endY; ++row) {
-                    for (std::uint32_t column = rectangle.y; column < endX; ++column) {
-                        drawPixel(row, column, rectangleColor);
-                    }
-                }
-            }
-        }
-
         void renderFramebufferTexture() const {
             const auto update = SDL_UpdateTexture(framebufferTexture, nullptr, framebuffer,
-                                                  static_cast<int>(sizeof(uint32_t) * framebufferWidth));
+                                                  static_cast<int>(sizeof(std::uint32_t) * framebufferWidth));
             const auto renderCopy = SDL_RenderCopy(renderer, framebufferTexture, nullptr, nullptr);
 
             if (update != EXIT_SUCCESS || renderCopy != EXIT_SUCCESS) {

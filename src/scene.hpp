@@ -1,24 +1,32 @@
 #pragma once
 
-#include <span>
 #include <vector>
-#include <SDL2/SDL.h>
+#include <span>
+
+#include <glm/glm.hpp>
 
 namespace rasterizer {
     class Scene {
     public:
-        Scene() = default;
+        const glm::float32 fov = 120;
 
-        void emplaceRectangle(const std::uint32_t positionX, const std::uint32_t positionY,
-                              const std::uint32_t width, const std::uint32_t height) {
-            rects.emplace_back(positionX, positionY, width, height);
+        Scene() {
+            // TODO: Use std::float32 when Clang supports it
+            // https://github.com/llvm/llvm-project/issues/97335
+            std::size_t pointCount = 0;
+            for (glm::float32 x = -1.0f; x <= 1.0f; x += 0.25f) {
+                for (glm::float32 y = -1.0f; y <= 1.0f; y += 0.25f) {
+                    cube[pointCount] = {x, y, 1.0f};
+                    ++pointCount;
+                }
+            }
         }
 
-        std::span<const SDL_Rect> rectangles() const {
-            return {rects.data(), rects.size()};
+        std::span<const glm::vec3> cubePoints() const {
+            return {cube.data(), cube.size()};
         }
 
     private:
-        std::vector<SDL_Rect> rects;
+        std::array<glm::vec3, 9 * 9> cube{};
     };
 }
