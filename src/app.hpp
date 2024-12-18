@@ -31,6 +31,8 @@ namespace rasterizer {
             framebufferWidth = static_cast<std::uint32_t>(windowWidth);
             framebufferHeight = static_cast<std::uint32_t>(windowHeight);
 
+            std::printf("Display size: %u x %u\n", framebufferWidth, framebufferHeight);
+
             framebuffer = createFramebuffer(framebufferWidth, framebufferHeight);
             framebufferTexture = createFramebufferTexture(renderer, framebufferWidth, framebufferHeight);
 
@@ -150,7 +152,7 @@ namespace rasterizer {
                                         const std::uint32_t width,
                                         const std::uint32_t height) {
             SDL_DisplayMode displayMode;
-            const auto displayModeQuery = SDL_GetDesktopDisplayMode(0, &displayMode);
+            const auto displayModeQuery = SDL_GetCurrentDisplayMode(0, &displayMode);
             const bool fullscreen = displayModeQuery == EXIT_SUCCESS;
 
             const std::uint32_t windowWidth = fullscreen && displayMode.w > 0 ? displayMode.w : width;
