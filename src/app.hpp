@@ -180,6 +180,12 @@ namespace rasterizer {
             return framebufferTexture;
         }
 
+        void drawPixel(const std::uint32_t row, const std::uint32_t column, const std::uint32_t& color) const {
+            if (row < framebufferHeight && column < framebufferWidth) {
+                framebuffer[row * framebufferWidth + column] = color;
+            }
+        }
+
         void clearFramebuffer() const {
             // Clear renderer
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -190,7 +196,7 @@ namespace rasterizer {
 
             for (std::uint32_t row = 0; row < framebufferHeight; ++row) {
                 for (std::uint32_t column = 0; column < framebufferWidth; ++column) {
-                    framebuffer[row * framebufferWidth + column] = clearColor;
+                    drawPixel(row, column, clearColor);
                 }
             }
         }
@@ -200,7 +206,7 @@ namespace rasterizer {
 
             for (std::uint32_t row = 0; row < framebufferHeight; row += 10) {
                 for (std::uint32_t column = 0; column < framebufferWidth; column += 10) {
-                    framebuffer[row * framebufferWidth + column] = gridColor;
+                    drawPixel(row, column, gridColor);
                 }
             }
         }
@@ -216,7 +222,7 @@ namespace rasterizer {
 
                 for (std::uint32_t row = rectangle.x; row < endY; ++row) {
                     for (std::uint32_t column = rectangle.y; column < endX; ++column) {
-                        framebuffer[row * framebufferWidth + column] = rectangleColor;
+                        drawPixel(row, column, rectangleColor);
                     }
                 }
             }
