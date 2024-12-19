@@ -8,6 +8,7 @@
 #include <SDL_render.h>
 
 #include "scene.hpp"
+#include "transformation.hpp"
 
 namespace rasterizer {
     static constexpr std::uint32_t defaultWindowWidth = 1600;
@@ -17,13 +18,19 @@ namespace rasterizer {
     public:
         bool isRunning = false;
 
-        explicit Application(const std::string_view& title) {
-            initializeSDL();
-            window = createWindow(title, defaultWindowWidth, defaultWindowHeight);
-            renderer = createRenderer(window);
+        explicit Application(const std::string_view& title, const Scene& scene) : scene(scene) {
+            if (!initializeSDL()) {
+                throw std::runtime_error("Failed to initialize SDL");
+            }
 
-            if (window == nullptr || renderer == nullptr) {
-                throw std::runtime_error("Failed to initialize SDL window");
+            window = createWindow(title, defaultWindowWidth, defaultWindowHeight);
+            if (window == nullptr) {
+                throw std::runtime_error("Failed to create window");
+            }
+
+            renderer = createRenderer(window);
+            if (renderer == nullptr) {
+                throw std::runtime_error("Failed to initialize renderer");
             }
 
             std::int32_t windowWidth, windowHeight;
@@ -84,13 +91,21 @@ namespace rasterizer {
         }
 
         void update() {
-            // TODO: Implement
+            static glm::float32 rotation = 0.0f;
+            rotation += 0.01f;
+            pointsToRender.clear();
+
+            for (const auto& point : scene.cubePoints()) {
+                const auto transformedPoint = rotateAroundY(point, rotation);
+                const auto projectedPoint = scene.frustum.perspectiveDivide(transformedPoint);
+                pointsToRender.emplace_back(projectedPoint);
+            }
         }
 
-        void render(const Scene& scene) const {
+        void render() const {
             clearFramebuffer();
             drawGrid();
-            drawScene(scene);
+            drawPoints();
             renderFramebufferTexture();
             SDL_RenderPresent(renderer);
         }
@@ -106,6 +121,9 @@ namespace rasterizer {
         std::uint32_t* framebuffer = nullptr;
         std::uint32_t framebufferWidth, framebufferHeight;
         SDL_Texture* framebufferTexture = nullptr;
+
+        const Scene& scene;
+        std::vector<glm::vec2> pointsToRender;
 
         static bool initializeSDL() {
             if (SDL_Init(SDL_INIT_EVERYTHING) != EXIT_SUCCESS) {
@@ -203,16 +221,13 @@ namespace rasterizer {
             }
         }
 
-        void drawScene(const Scene& scene) const {
-            for (const auto& point : scene.cubePoints()) {
-                // Project point
-                const auto projectedPoint = scene.frustum.perspectiveDivide(point);
-
+        void drawPoints() const {
+            for (const auto& point : pointsToRender) {
                 // Draw centered, with side length 10
                 drawRectangle(SDL_Rect{
-                    .x = static_cast<std::int32_t>(projectedPoint.x) +
+                    .x = static_cast<std::int32_t>(point.x) +
                          static_cast<std::int32_t>(framebufferWidth / 2),
-                    .y = static_cast<std::int32_t>(projectedPoint.y) +
+                    .y = static_cast<std::int32_t>(point.y) +
                          static_cast<std::int32_t>(framebufferHeight / 2),
                     .w = 10,
                     .h = 10

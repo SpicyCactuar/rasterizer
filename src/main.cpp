@@ -8,13 +8,13 @@
 int main(int argc, char* argv[]) try {
     static constexpr std::string_view title = "Hello Rasterizer";
 
-    rasterizer::Application app(title);
-    rasterizer::Scene scene;
+    const rasterizer::Scene scene;
+    rasterizer::Application app(title, scene);
 
     while (app.isRunning) {
         app.processInput();
         app.update();
-        app.render(scene);
+        app.render();
     }
 
     return EXIT_SUCCESS;
