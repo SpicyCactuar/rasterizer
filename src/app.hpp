@@ -91,12 +91,12 @@ namespace rasterizer {
         }
 
         void update() {
-            static glm::float32 rotation = 0.0f;
+            static glm::vec3 rotation{0.0f};
             rotation += 0.01f;
             pointsToRender.clear();
 
             for (const auto& point : scene.cubePoints()) {
-                const auto transformedPoint = rotateAroundY(point, rotation);
+                const auto transformedPoint = transformPoint(point, rotation);
                 const auto projectedPoint = scene.frustum.perspectiveDivide(transformedPoint);
                 pointsToRender.emplace_back(projectedPoint);
             }
@@ -233,6 +233,14 @@ namespace rasterizer {
                     .h = 10
                 });
             }
+        }
+
+        glm::vec3 transformPoint(const glm::vec3& point, const glm::vec3 rotationInDegrees) const {
+            glm::vec3 transformedPoint = point;
+            transformedPoint = rotateAroundX(transformedPoint, rotationInDegrees.x);
+            transformedPoint = rotateAroundY(transformedPoint, rotationInDegrees.y);
+            transformedPoint = rotateAroundZ(transformedPoint, rotationInDegrees.z);
+            return transformedPoint + scene.frustum.position;
         }
 
         void clearFramebuffer() const {
