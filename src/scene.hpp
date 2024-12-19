@@ -5,10 +5,12 @@
 
 #include <glm/glm.hpp>
 
+#include "frustum.hpp"
+
 namespace rasterizer {
     class Scene {
     public:
-        const glm::float32 fov = 120;
+        const Frustum frustum;
 
         Scene() {
             // TODO: Use std::float32 when Clang supports it
@@ -16,8 +18,10 @@ namespace rasterizer {
             std::size_t pointCount = 0;
             for (glm::float32 x = -1.0f; x <= 1.0f; x += 0.25f) {
                 for (glm::float32 y = -1.0f; y <= 1.0f; y += 0.25f) {
-                    cube[pointCount] = {x, y, 1.0f};
-                    ++pointCount;
+                    for (glm::float32 z = -1.0f; z <= 1.0f; z += 0.25f) {
+                        cube[pointCount] = {x, y, z};
+                        ++pointCount;
+                    }
                 }
             }
         }
@@ -27,6 +31,6 @@ namespace rasterizer {
         }
 
     private:
-        std::array<glm::vec3, 9 * 9> cube{};
+        std::array<glm::vec3, 9 * 9 * 9> cube{};
     };
 }

@@ -205,10 +205,14 @@ namespace rasterizer {
 
         void drawScene(const Scene& scene) const {
             for (const auto& point : scene.cubePoints()) {
+                // Project point
+                const auto projectedPoint = scene.frustum.perspectiveDivide(point);
+
+                // Draw centered, with side length 10
                 drawRectangle(SDL_Rect{
-                    .x = static_cast<std::int32_t>(point.x * scene.fov) +
+                    .x = static_cast<std::int32_t>(projectedPoint.x) +
                          static_cast<std::int32_t>(framebufferWidth / 2),
-                    .y = static_cast<std::int32_t>(point.y * scene.fov) +
+                    .y = static_cast<std::int32_t>(projectedPoint.y) +
                          static_cast<std::int32_t>(framebufferHeight / 2),
                     .w = 10,
                     .h = 10
