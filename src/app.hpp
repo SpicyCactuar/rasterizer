@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstdint>
 #include <stdexcept>
+#include <tuple>
 
 #include <SDL.h>
 #include <SDL_render.h>
@@ -95,20 +96,23 @@ namespace rasterizer {
             static glm::vec3 rotation{0.0f};
             rotation += 0.01f;
             pointsToRender.clear();
+            linesToRender.clear();
 
             for (const auto& mesh : scene.meshes) {
                 for (size_t face = 0; face < mesh.faces.size(); ++face) {
                     const auto [v0, v1, v2] = mesh[face].vertices;
-
-                    pointsToRender.emplace_back(
-                        scene.frustum.perspectiveDivide(transformPoint(v0, rotation))
-                    );
-                    pointsToRender.emplace_back(
-                        scene.frustum.perspectiveDivide(transformPoint(v1, rotation))
-                    );
-                    pointsToRender.emplace_back(
+                    const auto [p0, p1, p2] = std::tuple{
+                        scene.frustum.perspectiveDivide(transformPoint(v0, rotation)),
+                        scene.frustum.perspectiveDivide(transformPoint(v1, rotation)),
                         scene.frustum.perspectiveDivide(transformPoint(v2, rotation))
-                    );
+                    };
+
+                    pointsToRender.emplace_back(p0);
+                    pointsToRender.emplace_back(p1);
+                    pointsToRender.emplace_back(p2);
+                    linesToRender.emplace_back(p0, p1);
+                    linesToRender.emplace_back(p0, p2);
+                    linesToRender.emplace_back(p1, p2);
                 }
             }
         }
@@ -117,6 +121,7 @@ namespace rasterizer {
             clearFramebuffer();
             drawGrid();
             drawPoints();
+            drawLines();
             renderFramebufferTexture();
             SDL_RenderPresent(renderer);
         }
@@ -135,6 +140,7 @@ namespace rasterizer {
 
         const Scene& scene;
         std::vector<glm::vec2> pointsToRender;
+        std::vector<std::pair<glm::vec2, glm::vec2>> linesToRender;
 
         static bool initializeSDL() {
             if (SDL_Init(SDL_INIT_EVERYTHING) != EXIT_SUCCESS) {
@@ -243,6 +249,33 @@ namespace rasterizer {
                     .w = 10,
                     .h = 10
                 });
+            }
+        }
+
+        void drawLine(const glm::vec2& start, const glm::vec2& end) const {
+            static constexpr std::uint32_t lineColor = 0xFFA78BFA;
+            const glm::float32_t dx = end.x - start.x;
+            const glm::float32_t dy = end.y - start.y;
+
+            const glm::float32_t df = abs(dx) >= abs(dy) ? abs(dx) : abs(dy);
+
+            const glm::float32_t xIncrement = dx / df;
+            const glm::float32_t yIncrement = dy / df;
+
+            glm::float32_t x = start.x;
+            glm::float32_t y = start.y;
+            for (glm::float32_t l = 0.0f; l < df; l += 1.0f) {
+                drawPixel(static_cast<std::uint32_t>(std::round(y)) + framebufferHeight / 2,
+                          static_cast<std::uint32_t>(std::round(x)) + framebufferWidth / 2,
+                          lineColor);
+                x += xIncrement;
+                y += yIncrement;
+            }
+        }
+
+        void drawLines() const {
+            for (const auto& [start, end] : linesToRender) {
+                drawLine(start, end);
             }
         }
 
