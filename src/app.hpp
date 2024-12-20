@@ -7,6 +7,7 @@
 #include <SDL.h>
 #include <SDL_render.h>
 
+#include "mesh.hpp"
 #include "scene.hpp"
 #include "transformation.hpp"
 
@@ -95,10 +96,20 @@ namespace rasterizer {
             rotation += 0.01f;
             pointsToRender.clear();
 
-            for (const auto& point : scene.cubePoints()) {
-                const auto transformedPoint = transformPoint(point, rotation);
-                const auto projectedPoint = scene.frustum.perspectiveDivide(transformedPoint);
-                pointsToRender.emplace_back(projectedPoint);
+            for (const auto& mesh : scene.meshes) {
+                for (size_t face = 0; face < mesh.faces.size(); ++face) {
+                    const auto [v0, v1, v2] = mesh[face].vertices;
+
+                    pointsToRender.emplace_back(
+                        scene.frustum.perspectiveDivide(transformPoint(v0, rotation))
+                    );
+                    pointsToRender.emplace_back(
+                        scene.frustum.perspectiveDivide(transformPoint(v1, rotation))
+                    );
+                    pointsToRender.emplace_back(
+                        scene.frustum.perspectiveDivide(transformPoint(v2, rotation))
+                    );
+                }
             }
         }
 
@@ -236,6 +247,7 @@ namespace rasterizer {
         }
 
         glm::vec3 transformPoint(const glm::vec3& point, const glm::vec3 rotationInDegrees) const {
+            // First rotate, then translate
             glm::vec3 transformedPoint = point;
             transformedPoint = rotateAroundX(transformedPoint, rotationInDegrees.x);
             transformedPoint = rotateAroundY(transformedPoint, rotationInDegrees.y);
