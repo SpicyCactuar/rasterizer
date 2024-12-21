@@ -120,8 +120,12 @@ namespace rasterizer {
         void render() const {
             clearFramebuffer();
             drawGrid();
-            drawPoints();
-            drawLines();
+            for (const auto& point : pointsToRender) {
+                drawPoint(point);
+            }
+            for (const auto& [start, end] : linesToRender) {
+                drawLine(start, end);
+            }
             renderFramebufferTexture();
             SDL_RenderPresent(renderer);
         }
@@ -223,59 +227,46 @@ namespace rasterizer {
             }
         }
 
-        void drawRectangle(const SDL_Rect rectangle) const {
+        void drawRectangle(const std::uint32_t x, const std::uint32_t y,
+                           const std::uint32_t width, const std::uint32_t height) const {
             static constexpr std::uint32_t rectangleColor = 0xFF7C3AED;
 
-            const std::uint32_t endX = std::min(
-                static_cast<std::uint32_t>(rectangle.x + rectangle.w), framebufferWidth);
-            const std::uint32_t endY = std::min(
-                static_cast<std::uint32_t>(rectangle.y + rectangle.h), framebufferHeight);
+            const std::uint32_t endX = std::min(x + width, framebufferWidth);
+            const std::uint32_t endY = std::min(y + height, framebufferHeight);
 
-            for (std::uint32_t row = rectangle.y; row < endY; ++row) {
-                for (std::uint32_t column = rectangle.x; column < endX; ++column) {
+            for (std::uint32_t row = y; row < endY; ++row) {
+                for (std::uint32_t column = x; column < endX; ++column) {
                     drawPixel(row, column, rectangleColor);
                 }
             }
         }
 
-        void drawPoints() const {
-            for (const auto& point : pointsToRender) {
-                // Draw centered, with side length 10
-                drawRectangle(SDL_Rect{
-                    .x = static_cast<std::int32_t>(point.x) +
-                         static_cast<std::int32_t>(framebufferWidth / 2),
-                    .y = static_cast<std::int32_t>(point.y) +
-                         static_cast<std::int32_t>(framebufferHeight / 2),
-                    .w = 10,
-                    .h = 10
-                });
-            }
+        void drawPoint(const glm::vec2& point) const {
+            // Draw centered, with side length 10
+            drawRectangle(static_cast<std::uint32_t>(point.x) + framebufferWidth / 2,
+                          static_cast<std::uint32_t>(point.y) + framebufferHeight / 2,
+                          10, 10);
         }
 
         void drawLine(const glm::vec2& start, const glm::vec2& end) const {
             static constexpr std::uint32_t lineColor = 0xFFA78BFA;
-            const glm::float32_t dx = end.x - start.x;
-            const glm::float32_t dy = end.y - start.y;
+            const std::int32_t dx = static_cast<std::int32_t>(end.x) - static_cast<std::int32_t>(start.x);
+            const std::int32_t dy = static_cast<std::int32_t>(end.y) - static_cast<std::int32_t>(start.y);
 
-            const glm::float32_t df = abs(dx) >= abs(dy) ? abs(dx) : abs(dy);
+            const std::uint32_t longestLength = std::abs(dx) >= std::abs(dy) ? std::abs(dx) : abs(dy);
 
-            const glm::float32_t xIncrement = dx / df;
-            const glm::float32_t yIncrement = dy / df;
+            const auto df = static_cast<glm::float32_t>(longestLength);
+            const glm::float32_t xIncrement = static_cast<glm::float32_t>(dx) / df;
+            const glm::float32_t yIncrement = static_cast<glm::float32_t>(dy) / df;
 
             glm::float32_t x = start.x;
             glm::float32_t y = start.y;
-            for (glm::float32_t l = 0.0f; l < df; l += 1.0f) {
-                drawPixel(static_cast<std::uint32_t>(std::round(y)) + framebufferHeight / 2,
-                          static_cast<std::uint32_t>(std::round(x)) + framebufferWidth / 2,
+            for (std::uint32_t l = 0; l < longestLength; l += 1) {
+                drawPixel(static_cast<std::uint32_t>(y) + framebufferHeight / 2,
+                          static_cast<std::uint32_t>(x) + framebufferWidth / 2,
                           lineColor);
                 x += xIncrement;
                 y += yIncrement;
-            }
-        }
-
-        void drawLines() const {
-            for (const auto& [start, end] : linesToRender) {
-                drawLine(start, end);
             }
         }
 
