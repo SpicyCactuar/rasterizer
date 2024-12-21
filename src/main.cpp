@@ -7,18 +7,18 @@
 
 int main(int argc, char* argv[]) try {
     static constexpr std::string_view title = "Hello Rasterizer";
-    static constexpr std::uint32_t FPS = 60;
+    static constexpr std::uint32_t FPS = 120;
     static constexpr std::uint32_t FRAME_TIME = 1000 / FPS;
 
-    const rasterizer::Scene scene;
+    rasterizer::Scene scene;
     rasterizer::Application app(title, scene);
 
     while (app.isRunning) {
-        const std::uint32_t frameStart = SDL_GetTicks();
+        const std::uint64_t frameStart = SDL_GetTicks64();
         app.processInput();
         app.update();
         app.render();
-        if (const std::uint32_t pendingFrameTime = SDL_GetTicks() - frameStart;
+        if (const std::uint64_t pendingFrameTime = SDL_GetTicks64() - frameStart;
             pendingFrameTime < FRAME_TIME) {
             SDL_Delay(FRAME_TIME - pendingFrameTime);
         }

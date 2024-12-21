@@ -18,6 +18,7 @@ namespace rasterizer {
     struct Mesh {
         const std::vector<glm::vec3> vertices;
         const std::vector<glm::uvec3> faces;
+        glm::vec3 eulerRotation{0.0f};
 
         Mesh(std::vector<glm::vec3> vertices, std::vector<glm::uvec3> indices)
             : vertices(std::move(vertices)),

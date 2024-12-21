@@ -20,7 +20,7 @@ namespace rasterizer {
     public:
         bool isRunning = false;
 
-        explicit Application(const std::string_view& title, const Scene& scene) : scene(scene) {
+        explicit Application(const std::string_view& title, Scene& scene) : scene(scene) {
             if (!initializeSDL()) {
                 throw std::runtime_error("Failed to initialize SDL");
             }
@@ -92,40 +92,16 @@ namespace rasterizer {
             }
         }
 
-        void update() {
-            static glm::vec3 rotation{0.0f};
-            rotation += 0.01f;
-            pointsToRender.clear();
-            linesToRender.clear();
-
-            for (const auto& mesh : scene.meshes) {
-                for (size_t face = 0; face < mesh.faces.size(); ++face) {
-                    const auto [v0, v1, v2] = mesh[face].vertices;
-                    const auto [p0, p1, p2] = std::tuple{
-                        scene.frustum.perspectiveDivide(transformPoint(v0, rotation)),
-                        scene.frustum.perspectiveDivide(transformPoint(v1, rotation)),
-                        scene.frustum.perspectiveDivide(transformPoint(v2, rotation))
-                    };
-
-                    pointsToRender.emplace_back(p0);
-                    pointsToRender.emplace_back(p1);
-                    pointsToRender.emplace_back(p2);
-                    linesToRender.emplace_back(p0, p1);
-                    linesToRender.emplace_back(p0, p2);
-                    linesToRender.emplace_back(p1, p2);
-                }
+        void update() const {
+            for (Mesh& mesh : scene.meshes) {
+                mesh.eulerRotation += 0.01f;
             }
         }
 
         void render() const {
             clearFramebuffer();
             drawGrid();
-            for (const auto& point : pointsToRender) {
-                drawPoint(point);
-            }
-            for (const auto& [start, end] : linesToRender) {
-                drawLine(start, end);
-            }
+            drawScene();
             renderFramebufferTexture();
             SDL_RenderPresent(renderer);
         }
@@ -142,9 +118,7 @@ namespace rasterizer {
         std::uint32_t framebufferWidth, framebufferHeight;
         SDL_Texture* framebufferTexture = nullptr;
 
-        const Scene& scene;
-        std::vector<glm::vec2> pointsToRender;
-        std::vector<std::pair<glm::vec2, glm::vec2>> linesToRender;
+        Scene& scene;
 
         static bool initializeSDL() {
             if (SDL_Init(SDL_INIT_EVERYTHING) != EXIT_SUCCESS) {
@@ -249,6 +223,7 @@ namespace rasterizer {
         }
 
         void drawLine(const glm::vec2& start, const glm::vec2& end) const {
+            // DDA line rasterizer
             static constexpr std::uint32_t lineColor = 0xFFA78BFA;
             const std::int32_t dx = static_cast<std::int32_t>(end.x) - static_cast<std::int32_t>(start.x);
             const std::int32_t dy = static_cast<std::int32_t>(end.y) - static_cast<std::int32_t>(start.y);
@@ -267,6 +242,26 @@ namespace rasterizer {
                           lineColor);
                 x += xIncrement;
                 y += yIncrement;
+            }
+        }
+
+        void drawScene() const {
+            for (auto& mesh : scene.meshes) {
+                for (size_t face = 0; face < mesh.faces.size(); ++face) {
+                    const auto [v0, v1, v2] = mesh[face].vertices;
+                    const auto [p0, p1, p2] = std::tuple{
+                        scene.frustum.perspectiveDivide(transformPoint(v0, mesh.eulerRotation)),
+                        scene.frustum.perspectiveDivide(transformPoint(v1, mesh.eulerRotation)),
+                        scene.frustum.perspectiveDivide(transformPoint(v2, mesh.eulerRotation))
+                    };
+
+                    drawPoint(p0);
+                    drawPoint(p1);
+                    drawPoint(p2);
+                    drawLine(p0, p1);
+                    drawLine(p0, p2);
+                    drawLine(p1, p2);
+                }
             }
         }
 
