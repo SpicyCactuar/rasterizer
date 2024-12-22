@@ -11,8 +11,7 @@ namespace rasterizer {
         const Frustum frustum;
         std::vector<Mesh> meshes;
 
-        Scene() {
-            meshes.emplace_back(cubeMesh);
+        Scene(std::vector<Mesh> meshes) : meshes(std::move(meshes)) {
         }
     };
 }

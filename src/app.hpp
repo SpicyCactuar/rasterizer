@@ -247,6 +247,7 @@ namespace rasterizer {
 
         void drawScene() const {
             for (auto& mesh : scene.meshes) {
+                // For each mesh face, draw its points and lines
                 for (size_t face = 0; face < mesh.faces.size(); ++face) {
                     const auto [v0, v1, v2] = mesh[face].vertices;
                     const auto [p0, p1, p2] = std::tuple{
