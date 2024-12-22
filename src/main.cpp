@@ -1,3 +1,5 @@
+#include <print>
+
 #include <SDL2/SDL.h>
 
 #include "app.hpp"
@@ -26,6 +28,6 @@ int main(int argc, char* argv[]) try {
 
     return EXIT_SUCCESS;
 } catch (const std::exception& e) {
-    std::fprintf(stderr, "Exiting due to: %s\n", e.what());
+    std::print("Exiting due to: {}\n", e.what());
     return EXIT_FAILURE;
 }

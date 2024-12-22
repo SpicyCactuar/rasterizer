@@ -1,12 +1,13 @@
 #pragma once
 
-#include <cstdio>
 #include <cstdint>
+#include <iostream>
+#include <print>
 #include <stdexcept>
 #include <tuple>
 
-#include <SDL.h>
-#include <SDL_render.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_render.h>
 
 #include "mesh.hpp"
 #include "scene.hpp"
@@ -41,7 +42,7 @@ namespace rasterizer {
             framebufferWidth = static_cast<std::uint32_t>(windowWidth);
             framebufferHeight = static_cast<std::uint32_t>(windowHeight);
 
-            std::printf("Display size: %u x %u\n", framebufferWidth, framebufferHeight);
+            std::print("Display size: {} x {}\n", framebufferWidth, framebufferHeight);
 
             framebuffer = createFramebuffer(framebufferWidth, framebufferHeight);
             framebufferTexture = createFramebufferTexture(renderer, framebufferWidth, framebufferHeight);
@@ -122,7 +123,7 @@ namespace rasterizer {
 
         static bool initializeSDL() {
             if (SDL_Init(SDL_INIT_EVERYTHING) != EXIT_SUCCESS) {
-                std::printf("SDL_Init Error: %s\n", SDL_GetError());
+                std::print("SDL_Init Error: %s\n", SDL_GetError());
                 return false;
             }
 
@@ -130,10 +131,10 @@ namespace rasterizer {
             SDL_VERSION(&compiled);
             SDL_GetVersion(&linked);
 
-            std::printf("Compiled against SDL version: %d.%d.%d\n",
-                        compiled.major, compiled.minor, compiled.patch);
-            std::printf("Linked SDL version: %d.%d.%d\n",
-                        linked.major, linked.minor, linked.patch);
+            std::print("Compiled against SDL version: {}.{}.{}\n",
+                       compiled.major, compiled.minor, compiled.patch);
+            std::print("Linked SDL version: {}.{}.{}\n",
+                       linked.major, linked.minor, linked.patch);
 
             return true;
         }
@@ -155,7 +156,7 @@ namespace rasterizer {
                                                   SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALLOW_HIGHDPI);
 
             if (window == nullptr) {
-                std::printf("SDL_CreateWindow Error: %s\n", SDL_GetError());
+                std::print(std::cerr, "SDL_CreateWindow Error: {}\n", SDL_GetError());
                 return nullptr;
             }
 
@@ -166,7 +167,7 @@ namespace rasterizer {
             SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
 
             if (renderer == nullptr) {
-                std::printf("SDL_CreateRenderer Error: %s\n", SDL_GetError());
+                std::print(std::cerr, "SDL_CreateRenderer Error: {}\n", SDL_GetError());
                 return nullptr;
             }
 
@@ -188,7 +189,7 @@ namespace rasterizer {
                                                                 static_cast<std::int32_t>(height));
 
             if (framebufferTexture == nullptr) {
-                std::printf("SDL_CreateTexture Error: %s\n", SDL_GetError());
+                std::print(std::cerr, "SDL_CreateTexture Error: {}\n", SDL_GetError());
                 return nullptr;
             }
 
