@@ -95,7 +95,7 @@ namespace rasterizer {
 
         void update() const {
             for (Mesh& mesh : scene.meshes) {
-                mesh.eulerRotation += 0.01f;
+                mesh.eulerRotation += glm::vec3{0.01f, 0.01f, 0.02f};
             }
         }
 
@@ -248,13 +248,29 @@ namespace rasterizer {
 
         void drawScene() const {
             for (auto& mesh : scene.meshes) {
-                // For each mesh face, draw its points and lines
-                for (size_t face = 0; face < mesh.faces.size(); ++face) {
-                    const auto [v0, v1, v2] = mesh[face].vertices;
+                for (std::size_t t = 0; t < mesh.faces.size(); ++t) {
+                    // Extract and transform vertices
+                    auto [v0, v1, v2] = mesh[t].vertices;
+                    v0 = transformPoint(v0, mesh.eulerRotation); /*    v0     */
+                    v1 = transformPoint(v1, mesh.eulerRotation); /*  /    \   */
+                    v2 = transformPoint(v2, mesh.eulerRotation); /* v2 --- v1 */
+
+                    // Cull if backfacing
+                    const auto v01 = v1 - v0;
+                    const auto v02 = v2 - v0;
+                    const auto normal = rasterizer::cross(v01, v02);
+                    const auto triangleToCamera = scene.frustum.position - v0;
+
+                    // Cull if triangle normal and triangleToCamera are not pointing in the same direction
+                    if (rasterizer::dot(normal, triangleToCamera) < 0.0f) {
+                        continue;
+                    }
+
+                    // Draw its points and lines
                     const auto [p0, p1, p2] = std::tuple{
-                        scene.frustum.perspectiveDivide(transformPoint(v0, mesh.eulerRotation)),
-                        scene.frustum.perspectiveDivide(transformPoint(v1, mesh.eulerRotation)),
-                        scene.frustum.perspectiveDivide(transformPoint(v2, mesh.eulerRotation))
+                        scene.frustum.perspectiveDivide(v0),
+                        scene.frustum.perspectiveDivide(v1),
+                        scene.frustum.perspectiveDivide(v2)
                     };
 
                     drawPoint(p0);
@@ -267,13 +283,13 @@ namespace rasterizer {
             }
         }
 
-        glm::vec3 transformPoint(const glm::vec3& point, const glm::vec3 rotationInDegrees) const {
+        static glm::vec3 transformPoint(const glm::vec3& point, const glm::vec3 rotationInDegrees) {
             // First rotate, then translate
             glm::vec3 transformedPoint = point;
             transformedPoint = rotateAroundX(transformedPoint, rotationInDegrees.x);
             transformedPoint = rotateAroundY(transformedPoint, rotationInDegrees.y);
             transformedPoint = rotateAroundZ(transformedPoint, rotationInDegrees.z);
-            return transformedPoint + scene.frustum.position;
+            return transformedPoint + glm::vec3{0.0f, 0.0f, 5.0f};
         }
 
         void clearFramebuffer() const {

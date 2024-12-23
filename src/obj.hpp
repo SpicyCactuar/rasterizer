@@ -73,6 +73,6 @@ namespace rasterizer {
 
         file.close();
 
-        return {vertices, faces};
+        return {.vertices = vertices, .faces = faces};
     }
 }

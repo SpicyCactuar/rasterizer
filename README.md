@@ -46,3 +46,7 @@ bin/rasterizer-{debug|release}
 * **C++**: `>= C++23`
 * **Cmake**: `>= 3.28`
 * **SDL**: `>= 2.30.9`
+
+## TODOs
+
+* [ ] Allow culling configuration
