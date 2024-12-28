@@ -95,7 +95,7 @@ namespace rasterizer {
 
         void update() const {
             for (Mesh& mesh : scene.meshes) {
-                mesh.eulerRotation += glm::vec3{0.01f, 0.01f, 0.02f};
+                mesh.eulerRotation += glm::vec3{0.005f, 0.005f, 0.01f};
             }
         }
 

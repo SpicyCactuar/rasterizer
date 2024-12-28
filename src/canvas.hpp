@@ -72,7 +72,7 @@ namespace rasterizer {
 
             glm::float32_t x = start.x;
             glm::float32_t y = start.y;
-            for (std::uint32_t l = 0; l < longestLength; l += 1) {
+            for (std::uint32_t l = 0; l < longestLength; l++) {
                 drawPixel(static_cast<std::uint32_t>(y), static_cast<std::uint32_t>(x), lineColor);
                 x += xIncrement;
                 y += yIncrement;
@@ -119,21 +119,29 @@ namespace rasterizer {
         void drawFilledTriangle(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, const std::uint32_t color) const {
             sortAscendingVertically(p0, p1, p2);
 
-            // Solution based on similar triangles
-            const glm::vec2 mid{
-                (p2.x - p0.x) * (p1.y - p0.y) / (p2.y - p0.y) + p0.x,
-                p1.y
-            };
+            if (std::fabs(p1.y - p2.y) < std::numeric_limits<glm::float32_t>::epsilon()) {
+                // Triangle is flat bottom
+                drawFlatBottomTriangle(p0, p1, p2, color);
+            } else if (std::fabs(p0.y - p1.y) < std::numeric_limits<glm::float32_t>::epsilon()) {
+                // Triangle is flat top
+                drawFlatTopTriangle(p0, p1, p2, color);
+            } else {
+                // Solution based on similar triangles
+                const glm::vec2 mid{
+                    (p2.x - p0.x) * (p1.y - p0.y) / (p2.y - p0.y) + p0.x,
+                    p1.y
+                };
 
-            // Draw flat-bottom triangle
-            drawFlatBottomTriangle(p0, p1, mid, color);
+                // Draw flat-bottom triangle
+                drawFlatBottomTriangle(p0, p1, mid, color);
 
-            // Draw flat-top triangle
-            drawFlatTopTriangle(p1, mid, p2, color);
+                // Draw flat-top triangle
+                drawFlatTopTriangle(p1, mid, p2, color);
 
-            // Draw mid point on top
-            if constexpr (isDebugMode()) {
-                drawPoint(mid);
+                // Draw mid point on top
+                if constexpr (isDebugMode()) {
+                    drawPoint(mid);
+                }
             }
         }
 
@@ -163,7 +171,8 @@ namespace rasterizer {
 
             // Loop all the scanlines from top to bottom
             // Since Y+ is downward, we increment Y on each iteration
-            for (glm::float32_t y = p0.y; y <= p2.y; ++y) {
+            const auto maxY = static_cast<std::uint32_t>(p2.y);
+            for (auto y = static_cast<std::uint32_t>(p0.y); y <= maxY; ++y) {
                 drawLine({startX, y}, {endX, y}, color);
                 startX += invSlope01;
                 endX += invSlope02;
@@ -196,7 +205,8 @@ namespace rasterizer {
 
             // Loop all the scanlines from top to bottom
             // Since Y- is upward, we decrement Y on each iteration
-            for (glm::float32_t y = p2.y; y >= p0.y; --y) {
+            const auto minY = static_cast<std::uint32_t>(p0.y);
+            for (auto y = static_cast<std::uint32_t>(p2.y); y >= minY; --y) {
                 drawLine({startX, y}, {endX, y}, color);
                 startX -= invSlope20;
                 endX -= invSlope21;
