@@ -217,10 +217,11 @@ namespace rasterizer {
         }
 
         void drawPoint(const glm::vec2& point) const {
+            static constexpr std::uint32_t pointWidth = 10, pointHeight = 10;
             // Draw centered, with side length 10
-            drawRectangle(static_cast<std::uint32_t>(point.x) + framebufferWidth / 2,
-                          static_cast<std::uint32_t>(point.y) + framebufferHeight / 2,
-                          10, 10);
+            drawRectangle(static_cast<std::uint32_t>(point.x) + framebufferWidth / 2 - pointWidth / 2,
+                          static_cast<std::uint32_t>(point.y) + framebufferHeight / 2 - pointHeight / 2,
+                          pointWidth, pointHeight);
         }
 
         void drawLine(const glm::vec2& start, const glm::vec2& end) const {
