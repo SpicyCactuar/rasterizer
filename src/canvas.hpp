@@ -4,6 +4,8 @@
 
 #include <glm/glm.hpp>
 
+#include "common.hpp"
+
 namespace rasterizer {
     class Canvas {
     public:
@@ -36,30 +38,29 @@ namespace rasterizer {
         }
 
         void drawRectangle(const std::uint32_t x, const std::uint32_t y,
-                           const std::uint32_t width, const std::uint32_t height) const {
-            static constexpr std::uint32_t rectangleColor = 0xFF7C3AED;
-
+                           const std::uint32_t width, const std::uint32_t height,
+                           const std::uint32_t color) const {
             const std::uint32_t endX = std::min(x + width, this->width);
             const std::uint32_t endY = std::min(y + height, this->height);
 
             for (std::uint32_t row = y; row < endY; ++row) {
                 for (std::uint32_t column = x; column < endX; ++column) {
-                    drawPixel(row, column, rectangleColor);
+                    drawPixel(row, column, color);
                 }
             }
         }
 
         void drawPoint(const glm::vec2& point) const {
+            static constexpr std::uint32_t rectangleColor = 0xFF7C3AED;
             static constexpr std::uint32_t pointWidth = 10, pointHeight = 10;
             // Draw centered, with side length 10
             drawRectangle(static_cast<std::uint32_t>(point.x) - pointWidth / 2,
                           static_cast<std::uint32_t>(point.y) - pointHeight / 2,
-                          pointWidth, pointHeight);
+                          pointWidth, pointHeight, rectangleColor);
         }
 
-        void drawLine(const glm::vec2& start, const glm::vec2& end) const {
+        void drawLine(const glm::vec2& start, const glm::vec2& end, const std::uint32_t lineColor) const {
             // DDA line rasterizer
-            static constexpr std::uint32_t lineColor = 0xFFA78BFA;
             const std::int32_t dx = static_cast<std::int32_t>(end.x) - static_cast<std::int32_t>(start.x);
             const std::int32_t dy = static_cast<std::int32_t>(end.y) - static_cast<std::int32_t>(start.y);
 
@@ -79,13 +80,18 @@ namespace rasterizer {
         }
 
         void drawTriangle(const glm::vec2& p0, const glm::vec2& p1, const glm::vec2& p2) const {
-            drawPoint(p0);
-            drawPoint(p1);
-            drawPoint(p2);
-            drawLine(p0, p1);
-            drawLine(p0, p2);
-            drawLine(p1, p2);
-            drawFilledTriangle(p0, p1, p2);
+            static constexpr std::uint32_t triangleLineColor = 0xFFA78BFA;
+            static constexpr std::uint32_t triangleFillColor = 0xFF4C1D95;
+            drawFilledTriangle(p0, p1, p2, triangleFillColor);
+
+            if constexpr (isDebugMode()) {
+                drawPoint(p0);
+                drawPoint(p1);
+                drawPoint(p2);
+                drawLine(p0, p1, triangleLineColor);
+                drawLine(p0, p2, triangleLineColor);
+                drawLine(p1, p2, triangleLineColor);
+            }
         }
 
         ///////////////////////////////////////////////////////////////////////////////
@@ -107,9 +113,10 @@ namespace rasterizer {
         //                           \
         //                           p2
         //
-        // Created by: Pikuma (Gustavo Pezzi)
+        // Based on diagram by: Pikuma (Gustavo Pezzi)
+        //
         ///////////////////////////////////////////////////////////////////////////////
-        void drawFilledTriangle(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2) const {
+        void drawFilledTriangle(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, const std::uint32_t color) const {
             sortAscendingVertically(p0, p1, p2);
 
             // Solution based on similar triangles
@@ -118,8 +125,82 @@ namespace rasterizer {
                 p1.y
             };
 
-            // TODO: Draw fill-top and fill-bottom triangles
-            drawPoint(mid);
+            // Draw flat-bottom triangle
+            drawFlatBottomTriangle(p0, p1, mid, color);
+
+            // Draw flat-top triangle
+            drawFlatTopTriangle(p1, mid, p2, color);
+
+            // Draw mid point on top
+            if constexpr (isDebugMode()) {
+                drawPoint(mid);
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////
+        //
+        //           p0
+        //          /  \
+        //         /    \
+        //        /      \
+        //       /        \
+        //      /          \
+        //     p1 -------- p2
+        //
+        // Based on diagram by: Pikuma (Gustavo Pezzi)
+        //
+        ///////////////////////////////////////////////////////////////////////////////
+        void drawFlatBottomTriangle(const glm::vec2& p0, const glm::vec2& p1, const glm::vec2& p2,
+                                    const std::uint32_t color) const {
+            // Find the two slopes (two triangle legs)
+            // Inverse is taken as y becomes independent axis
+            const glm::float32_t invSlope01 = (p1.x - p0.x) / (p1.y - p0.y);
+            const glm::float32_t invSlope02 = (p2.x - p0.x) / (p2.y - p0.y);
+
+            // Start at the top vertex p0
+            glm::float32_t startX = p0.x;
+            glm::float32_t endX = p0.x;
+
+            // Loop all the scanlines from top to bottom
+            // Since Y+ is downward, we increment Y on each iteration
+            for (glm::float32_t y = p0.y; y <= p2.y; ++y) {
+                drawLine({startX, y}, {endX, y}, color);
+                startX += invSlope01;
+                endX += invSlope02;
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////
+        //
+        //     p0 -------- p1
+        //      \          /
+        //       \        /
+        //        \      /
+        //         \    /
+        //          \  /
+        //           p2
+        //
+        // Based on diagram by: Pikuma (Gustavo Pezzi)
+        //
+        ///////////////////////////////////////////////////////////////////////////////
+        void drawFlatTopTriangle(const glm::vec2& p0, const glm::vec2& p1, const glm::vec2& p2,
+                                 const std::uint32_t color) const {
+            // Find the two slopes (two triangle legs)
+            // Inverse is taken as y becomes independent axis
+            const glm::float32_t invSlope20 = (p0.x - p2.x) / (p0.y - p2.y);
+            const glm::float32_t invSlope21 = (p1.x - p2.x) / (p1.y - p2.y);
+
+            // Start at the top vertex p0
+            glm::float32_t startX = p2.x;
+            glm::float32_t endX = p2.x;
+
+            // Loop all the scanlines from top to bottom
+            // Since Y- is upward, we decrement Y on each iteration
+            for (glm::float32_t y = p2.y; y >= p0.y; --y) {
+                drawLine({startX, y}, {endX, y}, color);
+                startX -= invSlope20;
+                endX -= invSlope21;
+            }
         }
 
         void drawGrid() const {
