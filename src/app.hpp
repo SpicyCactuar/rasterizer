@@ -12,6 +12,7 @@
 #include "mesh.hpp"
 #include "scene.hpp"
 #include "transformation.hpp"
+#include "canvas.hpp"
 
 namespace rasterizer {
     static constexpr std::uint32_t defaultWindowWidth = 1600;
@@ -39,16 +40,16 @@ namespace rasterizer {
             std::int32_t windowWidth, windowHeight;
             SDL_GetWindowSize(window, &windowWidth, &windowHeight);
 
-            framebufferWidth = static_cast<std::uint32_t>(windowWidth);
-            framebufferHeight = static_cast<std::uint32_t>(windowHeight);
+            const auto framebufferWidth = static_cast<std::uint32_t>(windowWidth);
+            const auto framebufferHeight = static_cast<std::uint32_t>(windowHeight);
 
             std::print("Display size: {} x {}\n", framebufferWidth, framebufferHeight);
 
-            framebuffer = createFramebuffer(framebufferWidth, framebufferHeight);
-            framebufferTexture = createFramebufferTexture(renderer, framebufferWidth, framebufferHeight);
+            canvas = new Canvas(framebufferWidth, framebufferHeight);
 
-            if (framebuffer == nullptr || framebufferTexture == nullptr) {
-                throw std::runtime_error("Failed to initialize framebuffer");
+            framebufferTexture = createFramebufferTexture(renderer, framebufferWidth, framebufferHeight);
+            if (framebufferTexture == nullptr) {
+                throw std::runtime_error("Failed to initialize framebuffer texture");
             }
 
             isRunning = true;
@@ -61,9 +62,9 @@ namespace rasterizer {
                 SDL_DestroyTexture(framebufferTexture);
                 framebufferTexture = nullptr;
             }
-            if (framebuffer != nullptr) {
-                std::free(framebuffer);
-                framebuffer = nullptr;
+            if (canvas != nullptr) {
+                delete canvas;
+                canvas = nullptr;
             }
 
             if (renderer != nullptr) {
@@ -101,7 +102,7 @@ namespace rasterizer {
 
         void render() const {
             clearFramebuffer();
-            drawGrid();
+            canvas->drawGrid();
             drawScene();
             renderFramebufferTexture();
             SDL_RenderPresent(renderer);
@@ -111,12 +112,7 @@ namespace rasterizer {
         SDL_Window* window = nullptr;
         SDL_Renderer* renderer = nullptr;
 
-        /*
-         * Intentionally handled in a C-like manner for learning purposes.
-         * The C++ approach I would use is std::array<std::array<std::uint32_t, width>, height>
-         */
-        std::uint32_t* framebuffer = nullptr;
-        std::uint32_t framebufferWidth, framebufferHeight;
+        Canvas* canvas = nullptr;
         SDL_Texture* framebufferTexture = nullptr;
 
         Scene& scene;
@@ -174,11 +170,6 @@ namespace rasterizer {
             return renderer;
         }
 
-        static std::uint32_t* createFramebuffer(const std::uint32_t width, const std::uint32_t height) {
-            return static_cast<std::uint32_t*>(
-                std::calloc(width * height, sizeof(std::uint32_t)));
-        }
-
         static SDL_Texture* createFramebufferTexture(SDL_Renderer* renderer,
                                                      const std::uint32_t width,
                                                      const std::uint32_t height) {
@@ -194,57 +185,6 @@ namespace rasterizer {
             }
 
             return framebufferTexture;
-        }
-
-        void drawPixel(const std::uint32_t row, const std::uint32_t column, const std::uint32_t& color) const {
-            if (row < framebufferHeight && column < framebufferWidth) {
-                framebuffer[row * framebufferWidth + column] = color;
-            }
-        }
-
-        void drawRectangle(const std::uint32_t x, const std::uint32_t y,
-                           const std::uint32_t width, const std::uint32_t height) const {
-            static constexpr std::uint32_t rectangleColor = 0xFF7C3AED;
-
-            const std::uint32_t endX = std::min(x + width, framebufferWidth);
-            const std::uint32_t endY = std::min(y + height, framebufferHeight);
-
-            for (std::uint32_t row = y; row < endY; ++row) {
-                for (std::uint32_t column = x; column < endX; ++column) {
-                    drawPixel(row, column, rectangleColor);
-                }
-            }
-        }
-
-        void drawPoint(const glm::vec2& point) const {
-            static constexpr std::uint32_t pointWidth = 10, pointHeight = 10;
-            // Draw centered, with side length 10
-            drawRectangle(static_cast<std::uint32_t>(point.x) + framebufferWidth / 2 - pointWidth / 2,
-                          static_cast<std::uint32_t>(point.y) + framebufferHeight / 2 - pointHeight / 2,
-                          pointWidth, pointHeight);
-        }
-
-        void drawLine(const glm::vec2& start, const glm::vec2& end) const {
-            // DDA line rasterizer
-            static constexpr std::uint32_t lineColor = 0xFFA78BFA;
-            const std::int32_t dx = static_cast<std::int32_t>(end.x) - static_cast<std::int32_t>(start.x);
-            const std::int32_t dy = static_cast<std::int32_t>(end.y) - static_cast<std::int32_t>(start.y);
-
-            const std::uint32_t longestLength = std::abs(dx) >= std::abs(dy) ? std::abs(dx) : abs(dy);
-
-            const auto df = static_cast<glm::float32_t>(longestLength);
-            const glm::float32_t xIncrement = static_cast<glm::float32_t>(dx) / df;
-            const glm::float32_t yIncrement = static_cast<glm::float32_t>(dy) / df;
-
-            glm::float32_t x = start.x;
-            glm::float32_t y = start.y;
-            for (std::uint32_t l = 0; l < longestLength; l += 1) {
-                drawPixel(static_cast<std::uint32_t>(y) + framebufferHeight / 2,
-                          static_cast<std::uint32_t>(x) + framebufferWidth / 2,
-                          lineColor);
-                x += xIncrement;
-                y += yIncrement;
-            }
         }
 
         void drawScene() const {
@@ -267,19 +207,15 @@ namespace rasterizer {
                         continue;
                     }
 
-                    // Draw its points and lines
+                    const glm::vec2 center = {canvas->width / 2, canvas->height / 2};
+                    // Draw the centered triangles of the mesh
                     const auto [p0, p1, p2] = std::tuple{
-                        scene.frustum.perspectiveDivide(v0),
-                        scene.frustum.perspectiveDivide(v1),
-                        scene.frustum.perspectiveDivide(v2)
+                        scene.frustum.perspectiveDivide(v0) + center,
+                        scene.frustum.perspectiveDivide(v1) + center,
+                        scene.frustum.perspectiveDivide(v2) + center
                     };
 
-                    drawPoint(p0);
-                    drawPoint(p1);
-                    drawPoint(p2);
-                    drawLine(p0, p1);
-                    drawLine(p0, p2);
-                    drawLine(p1, p2);
+                    canvas->drawTriangle(p0, p1, p2);
                 }
             }
         }
@@ -298,29 +234,14 @@ namespace rasterizer {
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             SDL_RenderClear(renderer);
 
-            // Clear framebuffer contents
-            static constexpr std::uint32_t clearColor = 0xFF2E1065;
-
-            for (std::uint32_t row = 0; row < framebufferHeight; ++row) {
-                for (std::uint32_t column = 0; column < framebufferWidth; ++column) {
-                    drawPixel(row, column, clearColor);
-                }
-            }
-        }
-
-        void drawGrid() const {
-            static constexpr std::uint32_t gridColor = 0xFF7C3AED;
-
-            for (std::uint32_t row = 0; row < framebufferHeight; row += 10) {
-                for (std::uint32_t column = 0; column < framebufferWidth; column += 10) {
-                    drawPixel(row, column, gridColor);
-                }
-            }
+            // Clear Canvas
+            canvas->clear();
         }
 
         void renderFramebufferTexture() const {
-            const auto update = SDL_UpdateTexture(framebufferTexture, nullptr, framebuffer,
-                                                  static_cast<int>(sizeof(std::uint32_t) * framebufferWidth));
+            const auto update = SDL_UpdateTexture(framebufferTexture, nullptr,
+                                                  static_cast<const std::uint32_t*>(*canvas),
+                                                  static_cast<int>(sizeof(std::uint32_t) * canvas->width));
             const auto renderCopy = SDL_RenderCopy(renderer, framebufferTexture, nullptr, nullptr);
 
             if (update != EXIT_SUCCESS || renderCopy != EXIT_SUCCESS) {
