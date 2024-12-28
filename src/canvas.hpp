@@ -85,6 +85,41 @@ namespace rasterizer {
             drawLine(p0, p1);
             drawLine(p0, p2);
             drawLine(p1, p2);
+            drawFilledTriangle(p0, p1, p2);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////
+        //
+        //            p0
+        //            / \
+        //           /   \
+        //          /     \
+        //         /       \
+        //        /         \
+        //      p1 -------- mid
+        //       \_           \
+        //          \_         \
+        //             \_       \
+        //                \_     \
+        //                   \    \
+        //                     \_  \
+        //                        \_\
+        //                           \
+        //                           p2
+        //
+        // Created by: Pikuma (Gustavo Pezzi)
+        ///////////////////////////////////////////////////////////////////////////////
+        void drawFilledTriangle(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2) const {
+            sortAscendingVertically(p0, p1, p2);
+
+            // Solution based on similar triangles
+            const glm::vec2 mid{
+                (p2.x - p0.x) * (p1.y - p0.y) / (p2.y - p0.y) + p0.x,
+                p1.y
+            };
+
+            // TODO: Draw fill-top and fill-bottom triangles
+            drawPoint(mid);
         }
 
         void drawGrid() const {
@@ -117,6 +152,24 @@ namespace rasterizer {
 
         static std::uint32_t* createFramebuffer(const std::uint32_t width, const std::uint32_t height) {
             return static_cast<std::uint32_t*>(std::calloc(width * height, sizeof(std::uint32_t)));
+        }
+
+        static void sortAscendingVertically(glm::vec2& p0, glm::vec2& p1, glm::vec2& p2) {
+            if (p1.y < p0.y) {
+                // p1.y < p0.y => p0.y < p1.y
+                std::swap(p0, p1);
+            }
+
+            if (p2.y < p0.y) {
+                // p2.y < p0.y < p1.y => p0.y < p1.y < p2.y
+                std::swap(p0, p2);
+                std::swap(p1, p2);
+            }
+
+            if (p2.y < p1.y) {
+                // p0.y < p2.y < p1.y => p0.y < p1.y < p2.y
+                std::swap(p1, p2);
+            }
         }
     };
 }
