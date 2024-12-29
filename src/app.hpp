@@ -4,6 +4,7 @@
 #include <iostream>
 #include <print>
 #include <stdexcept>
+#include <tuple>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_render.h>

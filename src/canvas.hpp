@@ -64,7 +64,7 @@ namespace rasterizer {
             const std::int32_t dx = static_cast<std::int32_t>(end.x) - static_cast<std::int32_t>(start.x);
             const std::int32_t dy = static_cast<std::int32_t>(end.y) - static_cast<std::int32_t>(start.y);
 
-            const std::uint32_t longestLength = std::abs(dx) >= std::abs(dy) ? std::abs(dx) : abs(dy);
+            const std::uint32_t longestLength = std::abs(dx) >= std::abs(dy) ? std::abs(dx) : std::abs(dy);
 
             const auto df = static_cast<glm::float32_t>(longestLength);
             const glm::float32_t xIncrement = static_cast<glm::float32_t>(dx) / df;
@@ -72,8 +72,9 @@ namespace rasterizer {
 
             glm::float32_t x = start.x;
             glm::float32_t y = start.y;
-            for (std::uint32_t l = 0; l < longestLength; l++) {
-                drawPixel(static_cast<std::uint32_t>(y), static_cast<std::uint32_t>(x), lineColor);
+            for (std::uint32_t l = 0; l <= longestLength; l++) {
+                drawPixel(static_cast<std::uint32_t>(std::round(y)), static_cast<std::uint32_t>(std::round(x)),
+                          lineColor);
                 x += xIncrement;
                 y += yIncrement;
             }
@@ -91,6 +92,10 @@ namespace rasterizer {
                 drawLine(p0, p1, triangleLineColor);
                 drawLine(p0, p2, triangleLineColor);
                 drawLine(p1, p2, triangleLineColor);
+            } else {
+                drawLine(p0, p1, triangleFillColor);
+                drawLine(p0, p2, triangleFillColor);
+                drawLine(p1, p2, triangleFillColor);
             }
         }
 
