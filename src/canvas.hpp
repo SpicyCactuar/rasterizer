@@ -250,16 +250,13 @@ namespace rasterizer {
                 // p1.y < p0.y => p0.y < p1.y
                 std::swap(p0, p1);
             }
-
-            if (p2.y < p0.y) {
-                // p2.y < p0.y < p1.y => p0.y < p1.y < p2.y
-                std::swap(p0, p2);
+            if (p2.y < p1.y) {
+                // p2.y < p1.y => p1.y < p2.y
                 std::swap(p1, p2);
             }
-
-            if (p2.y < p1.y) {
-                // p0.y < p2.y < p1.y => p0.y < p1.y < p2.y
-                std::swap(p1, p2);
+            if (p1.y < p0.y) {
+                // p1.y < p0.y => p0.y < p1.y
+                std::swap(p0, p1);
             }
         }
     };
