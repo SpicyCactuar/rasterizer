@@ -197,9 +197,9 @@ namespace rasterizer {
                     v2 = transformPoint(v2, mesh.eulerRotation); /* v2 --- v1 */
 
                     // Cull if backfacing
-                    const auto v01 = v1 - v0;
-                    const auto v02 = v2 - v0;
-                    const auto normal = rasterizer::cross(v01, v02);
+                    const auto v01 = glm::normalize(v1 - v0);
+                    const auto v02 = glm::normalize(v2 - v0);
+                    const auto normal = glm::normalize(rasterizer::cross(v01, v02));
                     const auto triangleToCamera = scene.frustum.position - v0;
 
                     // Cull if triangle normal and triangleToCamera are not pointing in the same direction
