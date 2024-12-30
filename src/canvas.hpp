@@ -7,6 +7,14 @@
 #include "common.hpp"
 
 namespace rasterizer {
+    typedef std::uint32_t color_t;
+
+    enum class PolygonMode : std::uint32_t {
+        FILL = 1 << 0, // 0b0001
+        LINE = 1 << 1, // 0b0010
+        POINT = 1 << 2 // 0b0100
+    };
+
     class Canvas {
     public:
         Canvas(const std::uint32_t width, const std::uint32_t height) : width(width),
@@ -31,7 +39,7 @@ namespace rasterizer {
             return buffer;
         }
 
-        void drawPixel(const std::int32_t row, const std::int32_t column, const std::uint32_t& color) const {
+        void drawPixel(const std::int32_t row, const std::int32_t column, const color_t color) const {
             if (0 <= row && row < height && 0 <= column && column < width) {
                 buffer[row * width + column] = color;
             }
@@ -39,7 +47,7 @@ namespace rasterizer {
 
         void drawRectangle(const std::int32_t x, const std::int32_t y,
                            const std::uint32_t width, const std::uint32_t height,
-                           const std::uint32_t color) const {
+                           const color_t color) const {
             const std::uint32_t endX = std::min(x + width, this->width);
             const std::uint32_t endY = std::min(y + height, this->height);
 
@@ -50,16 +58,15 @@ namespace rasterizer {
             }
         }
 
-        void drawPoint(const glm::ivec2& point) const {
-            static constexpr std::uint32_t rectangleColor = 0xFF7C3AED;
+        void drawPoint(const glm::ivec2& point, const color_t color) const {
             static constexpr std::uint32_t pointWidth = 10, pointHeight = 10;
             // Draw centered, with side length 10
             drawRectangle(point.x - static_cast<std::int32_t>(pointWidth / 2),
                           point.y - static_cast<std::int32_t>(pointHeight / 2),
-                          pointWidth, pointHeight, rectangleColor);
+                          pointWidth, pointHeight, color);
         }
 
-        void drawLine(const glm::ivec2& start, const glm::ivec2& end, const std::uint32_t lineColor) const {
+        void drawLine(const glm::ivec2& start, const glm::ivec2& end, const color_t color) const {
             // DDA line rasterizer
             const std::int32_t dx = end.x - start.x;
             const std::int32_t dy = end.y - start.y;
@@ -74,28 +81,35 @@ namespace rasterizer {
             glm::float32_t y = start.y;
             for (std::uint32_t l = 0; l <= longestLength; l++) {
                 drawPixel(static_cast<std::int32_t>(std::round(y)), static_cast<std::int32_t>(std::round(x)),
-                          lineColor);
+                          color);
                 x += xIncrement;
                 y += yIncrement;
             }
         }
 
         void drawTriangle(const glm::ivec2& p0, const glm::ivec2& p1, const glm::ivec2& p2) const {
-            static constexpr std::uint32_t triangleLineColor = 0xFFA78BFA;
-            static constexpr std::uint32_t triangleFillColor = 0xFF4C1D95;
-            drawFilledTriangle(p0, p1, p2, triangleFillColor);
+            static constexpr color_t triangleFillColor = 0xFF4C1D95;
+            static constexpr color_t triangleLineColor = 0xFFA78BFA;
+            static constexpr color_t trianglePointColor = 0xFF7C3AED;
 
-            if constexpr (isDebugMode()) {
-                drawPoint(p0);
-                drawPoint(p1);
-                drawPoint(p2);
+            const bool drawTriangleFill = polygonModeMask & static_cast<std::uint32_t>(PolygonMode::FILL);
+            const bool drawTriangleLines = polygonModeMask & static_cast<std::uint32_t>(PolygonMode::LINE);
+            const bool drawTrianglePoints = polygonModeMask & static_cast<std::uint32_t>(PolygonMode::POINT);
+
+            if (drawTriangleFill) {
+                drawFilledTriangle(p0, p1, p2, triangleFillColor);
+            }
+
+            if (drawTrianglePoints) {
+                drawPoint(p0, trianglePointColor);
+                drawPoint(p1, trianglePointColor);
+                drawPoint(p2, trianglePointColor);
+            }
+
+            if (drawTriangleLines) {
                 drawLine(p0, p1, triangleLineColor);
                 drawLine(p0, p2, triangleLineColor);
                 drawLine(p1, p2, triangleLineColor);
-            } else {
-                drawLine(p0, p1, triangleFillColor);
-                drawLine(p0, p2, triangleFillColor);
-                drawLine(p1, p2, triangleFillColor);
             }
         }
 
@@ -121,7 +135,7 @@ namespace rasterizer {
         // Based on diagram by: Pikuma (Gustavo Pezzi)
         //
         ///////////////////////////////////////////////////////////////////////////////
-        void drawFilledTriangle(glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2, const std::uint32_t color) const {
+        void drawFilledTriangle(glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2, const color_t color) const {
             sortAscendingVertically(p0, p1, p2);
 
             if (p1.y == p2.y) {
@@ -142,11 +156,6 @@ namespace rasterizer {
 
                 // Draw flat-top triangle
                 drawFlatTopTriangle(p1, mid, p2, color);
-
-                // Draw mid point on top
-                if constexpr (isDebugMode()) {
-                    drawPoint(mid);
-                }
             }
         }
 
@@ -164,7 +173,7 @@ namespace rasterizer {
         //
         ///////////////////////////////////////////////////////////////////////////////
         void drawFlatBottomTriangle(const glm::ivec2& p0, const glm::ivec2& p1, const glm::ivec2& p2,
-                                    const std::uint32_t color) const {
+                                    const color_t color) const {
             // Find the two slopes (two triangle legs)
             // Inverse is taken as y becomes independent axis
             const auto invSlope01 = static_cast<glm::float32_t>(p1.x - p0.x) / static_cast<glm::float32_t>(p1.y - p0.y);
@@ -197,7 +206,7 @@ namespace rasterizer {
         //
         ///////////////////////////////////////////////////////////////////////////////
         void drawFlatTopTriangle(const glm::ivec2& p0, const glm::ivec2& p1, const glm::ivec2& p2,
-                                 const std::uint32_t color) const {
+                                 const color_t color) const {
             // Find the two slopes (two triangle legs)
             // Inverse is taken as y becomes independent axis
             const auto invSlope20 = static_cast<glm::float32_t>(p0.x - p2.x) / static_cast<glm::float32_t>(p0.y - p2.y);
@@ -237,12 +246,22 @@ namespace rasterizer {
             }
         }
 
+        void enable(const PolygonMode mode) {
+            polygonModeMask |= static_cast<std::uint32_t>(mode);
+        }
+
+        void disable(const PolygonMode mode) {
+            polygonModeMask &= ~static_cast<std::uint32_t>(mode);
+        }
+
     private:
         /*
          * Intentionally handled in a C-like manner for learning purposes.
          * The C++ approach I would use is std::array<std::array<std::uint32_t, width>, height>
          */
         std::uint32_t* buffer = nullptr;
+
+        std::uint32_t polygonModeMask = static_cast<std::uint32_t>(PolygonMode::LINE);
 
         static std::uint32_t* createFramebuffer(const std::uint32_t width, const std::uint32_t height) {
             return static_cast<std::uint32_t*>(std::calloc(width * height, sizeof(std::uint32_t)));

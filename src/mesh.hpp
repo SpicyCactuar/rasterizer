@@ -10,7 +10,7 @@ namespace rasterizer {
     };
 
     /*
-     * The mesh faces are:
+     * The mesh faces are assumed to be:
      *  - Clockwise
      *  - Triangular
      */

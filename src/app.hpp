@@ -85,10 +85,10 @@ namespace rasterizer {
             switch (event.type) {
                 case SDL_QUIT:
                     isRunning = false;
-                case SDL_KEYDOWN:
-                    if (SDL_SCANCODE_ESCAPE == event.key.keysym.scancode) {
-                        isRunning = false;
-                    }
+                    break;
+                case SDL_KEYUP:
+                    processKeypress(event.key.keysym.sym);
+                    break;
                 default:
                     break;
             }
@@ -187,6 +187,44 @@ namespace rasterizer {
             return framebufferTexture;
         }
 
+        bool backFaceCulling = true;
+
+        void processKeypress(const SDL_Keycode keycode) {
+            switch (keycode) {
+                case SDLK_ESCAPE:
+                    isRunning = false;
+                    break;
+                case SDLK_1:
+                    canvas->disable(PolygonMode::FILL);
+                    canvas->enable(PolygonMode::LINE);
+                    canvas->enable(PolygonMode::POINT);
+                    break;
+                case SDLK_2:
+                    canvas->disable(PolygonMode::FILL);
+                    canvas->enable(PolygonMode::LINE);
+                    canvas->disable(PolygonMode::POINT);
+                    break;
+                case SDLK_3:
+                    canvas->enable(PolygonMode::FILL);
+                    canvas->disable(PolygonMode::LINE);
+                    canvas->disable(PolygonMode::POINT);
+                    break;
+                case SDLK_4:
+                    canvas->enable(PolygonMode::FILL);
+                    canvas->enable(PolygonMode::LINE);
+                    canvas->disable(PolygonMode::POINT);
+                    break;
+                case SDLK_c:
+                    backFaceCulling = true;
+                    break;
+                case SDLK_d:
+                    backFaceCulling = false;
+                    break;
+                default:
+                    break;
+            }
+        }
+
         void drawScene() const {
             for (auto& mesh : scene.meshes) {
                 for (std::size_t t = 0; t < mesh.faces.size(); ++t) {
@@ -197,14 +235,16 @@ namespace rasterizer {
                     v2 = transformPoint(v2, mesh.eulerRotation); /* v2 --- v1 */
 
                     // Cull if backfacing
-                    const auto v01 = glm::normalize(v1 - v0);
-                    const auto v02 = glm::normalize(v2 - v0);
-                    const auto normal = glm::normalize(rasterizer::cross(v01, v02));
-                    const auto triangleToCamera = scene.frustum.position - v0;
+                    if (backFaceCulling) {
+                        const auto v01 = glm::normalize(v1 - v0);
+                        const auto v02 = glm::normalize(v2 - v0);
+                        const auto normal = glm::normalize(rasterizer::cross(v01, v02));
+                        const auto triangleToCamera = scene.frustum.position - v0;
 
-                    // Cull if triangle normal and triangleToCamera are not pointing in the same direction
-                    if (rasterizer::dot(normal, triangleToCamera) < 0.0f) {
-                        continue;
+                        // Cull if triangle normal and triangleToCamera are not pointing in the same direction
+                        if (rasterizer::dot(normal, triangleToCamera) < 0.0f) {
+                            continue;
+                        }
                     }
 
                     const glm::vec2 center = {canvas->width / 2, canvas->height / 2};
