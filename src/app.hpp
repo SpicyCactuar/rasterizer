@@ -6,7 +6,6 @@
 #include <numeric>
 #include <print>
 #include <stdexcept>
-#include <tuple>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_render.h>
@@ -99,6 +98,8 @@ namespace rasterizer {
         void update() const {
             for (Mesh& mesh : scene.meshes) {
                 mesh.eulerRotation += glm::vec3{0.005f, 0.005f, 0.01f};
+                mesh.scale.x += 0.002f;
+                mesh.scale.y += 0.001f;
             }
         }
 
@@ -250,10 +251,11 @@ namespace rasterizer {
             for (auto& mesh : scene.meshes) {
                 for (std::size_t face = 0; face < mesh.faces.size(); ++face) {
                     // Extract and transform vertices
+                    const auto meshModel = mesh.modelTransformation();
                     auto [v0, v1, v2] = mesh[face].vertices;
-                    v0 = transformPoint(v0, mesh.eulerRotation); /*    v0     */
-                    v1 = transformPoint(v1, mesh.eulerRotation); /*  /    \   */
-                    v2 = transformPoint(v2, mesh.eulerRotation); /* v2 --- v1 */
+                    v0 = transformPoint(v0, meshModel); /*    v0     */
+                    v1 = transformPoint(v1, meshModel); /*  /    \   */
+                    v2 = transformPoint(v2, meshModel); /* v2 --- v1 */
 
                     // Cull if backfacing
                     if (backFaceCulling) {
@@ -296,13 +298,9 @@ namespace rasterizer {
             return trianglesToRender;
         }
 
-        static glm::vec3 transformPoint(const glm::vec3& point, const glm::vec3 rotationInDegrees) {
-            // First rotate, then translate
-            glm::vec3 transformedPoint = point;
-            transformedPoint = rotateAroundX(transformedPoint, rotationInDegrees.x);
-            transformedPoint = rotateAroundY(transformedPoint, rotationInDegrees.y);
-            transformedPoint = rotateAroundZ(transformedPoint, rotationInDegrees.z);
-            return transformedPoint + glm::vec3{0.0f, 0.0f, 5.0f};
+        static glm::vec3 transformPoint(const glm::vec3& point, const glm::mat4& model) {
+            // Offset by {0, 0, 5} to put object in front of camera
+            return glm::vec3{model * glm::vec4{point, 1.0f}} + glm::vec3{0.0f, 0.0f, 5.0f};
         }
 
         void clearFramebuffer() const {
