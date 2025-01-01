@@ -1,7 +1,9 @@
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <iostream>
+#include <numeric>
 #include <print>
 #include <stdexcept>
 #include <tuple>
@@ -226,11 +228,18 @@ namespace rasterizer {
         }
 
         void drawScene() const {
-            const auto trianglesToRender = computeTrianglesToRender();
+            auto trianglesToRender = computeTrianglesToRender();
 
-            // TODO: Sort
-            for (const auto& triangle : trianglesToRender) {
-                canvas->drawTriangle(triangle);
+            // Sort from back to front
+            std::vector<size_t> indicesByDepth(trianglesToRender.size());
+            std::iota(indicesByDepth.begin(), indicesByDepth.end(), 0);
+            std::sort(indicesByDepth.begin(), indicesByDepth.end(),
+                      [&trianglesToRender](const size_t t1, const size_t t2) {
+                          return trianglesToRender[t1].averageDepth > trianglesToRender[t2].averageDepth;
+                      });
+
+            for (const auto ti : indicesByDepth) {
+                canvas->drawTriangle(trianglesToRender[ti]);
             }
         }
 
@@ -251,7 +260,7 @@ namespace rasterizer {
                         const auto v01 = glm::normalize(v1 - v0);
                         const auto v02 = glm::normalize(v2 - v0);
                         const auto normal = glm::normalize(rasterizer::cross(v01, v02));
-                        const auto triangleToCamera = scene.frustum.position - v0;
+                        const auto triangleToCamera = glm::normalize(scene.frustum.position - v0);
 
                         // Cull if triangle normal and triangleToCamera are not pointing in the same direction
                         if (rasterizer::dot(normal, triangleToCamera) < 0.0f) {
@@ -275,7 +284,7 @@ namespace rasterizer {
                             scene.frustum.perspectiveDivide(v1) + center,
                             scene.frustum.perspectiveDivide(v2) + center
                         },
-                        .averageDepth = v0.z + v1.z + v2.z / 3.0f,
+                        .averageDepth = (v0.z + v1.z + v2.z) / 3.0f,
                         .color = triangleColor
                     };
 
