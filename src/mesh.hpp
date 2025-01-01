@@ -5,7 +5,7 @@
 #include <glm/glm.hpp>
 
 namespace rasterizer {
-    struct Triangle {
+    struct TriangleFace {
         const std::array<glm::vec3, 3> vertices;
     };
 
@@ -19,7 +19,7 @@ namespace rasterizer {
         const std::vector<glm::uvec3> faces;
         glm::vec3 eulerRotation{0.0f};
 
-        Triangle operator[](const std::size_t index) const {
+        TriangleFace operator[](const std::size_t index) const {
             return {
                 vertices[faces[index][0]],
                 vertices[faces[index][1]],

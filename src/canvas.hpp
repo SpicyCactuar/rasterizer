@@ -15,6 +15,14 @@ namespace rasterizer {
         POINT = 1 << 2 // 0b0100
     };
 
+    static constexpr color_t triangleFillColor = 0xFF4C1D95;
+
+    struct Triangle {
+        const std::array<glm::ivec2, 3> vertices;
+        const glm::float32_t averageDepth;
+        const color_t color = triangleFillColor;
+    };
+
     class Canvas {
     public:
         Canvas(const std::uint32_t width, const std::uint32_t height) : width(width),
@@ -87,8 +95,8 @@ namespace rasterizer {
             }
         }
 
-        void drawTriangle(const glm::ivec2& p0, const glm::ivec2& p1, const glm::ivec2& p2) const {
-            static constexpr color_t triangleFillColor = 0xFF4C1D95;
+        void drawTriangle(const Triangle& triangle) const {
+            const auto& [p0, p1, p2] = triangle.vertices;
             static constexpr color_t triangleLineColor = 0xFFA78BFA;
             static constexpr color_t trianglePointColor = 0xFF7C3AED;
 
@@ -97,7 +105,7 @@ namespace rasterizer {
             const bool drawTrianglePoints = polygonModeMask & static_cast<std::uint32_t>(PolygonMode::POINT);
 
             if (drawTriangleFill) {
-                drawFilledTriangle(p0, p1, p2, triangleFillColor);
+                drawFilledTriangle(p0, p1, p2, triangle.color);
             }
 
             if (drawTrianglePoints) {

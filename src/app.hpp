@@ -226,10 +226,22 @@ namespace rasterizer {
         }
 
         void drawScene() const {
+            const auto trianglesToRender = computeTrianglesToRender();
+
+            // TODO: Sort
+            for (const auto& triangle : trianglesToRender) {
+                canvas->drawTriangle(triangle);
+            }
+        }
+
+        std::vector<Triangle> computeTrianglesToRender() const {
+            std::vector<Triangle> trianglesToRender;
+            trianglesToRender.reserve(scene.meshes.size());
+
             for (auto& mesh : scene.meshes) {
-                for (std::size_t t = 0; t < mesh.faces.size(); ++t) {
+                for (std::size_t face = 0; face < mesh.faces.size(); ++face) {
                     // Extract and transform vertices
-                    auto [v0, v1, v2] = mesh[t].vertices;
+                    auto [v0, v1, v2] = mesh[face].vertices;
                     v0 = transformPoint(v0, mesh.eulerRotation); /*    v0     */
                     v1 = transformPoint(v1, mesh.eulerRotation); /*  /    \   */
                     v2 = transformPoint(v2, mesh.eulerRotation); /* v2 --- v1 */
@@ -247,17 +259,32 @@ namespace rasterizer {
                         }
                     }
 
+                    // Compute synthetic color from face index
+                    const std::uint32_t colorSeed = face * 2654435761u;
+                    color_t a = 0xFF000000; // 0xFF000000
+                    color_t r = colorSeed & 0x00FF0000; // 0x00RR0000
+                    color_t g = colorSeed & 0x0000FF00; // 0x0000GG00
+                    color_t b = colorSeed & 0x000000FF; // 0x000000BB
+                    color_t triangleColor = a | r | g | b;
+
                     const glm::vec2 center = {canvas->width / 2, canvas->height / 2};
                     // Draw the centered triangles of the mesh
-                    const auto [p0, p1, p2] = std::tuple{
-                        scene.frustum.perspectiveDivide(v0) + center,
-                        scene.frustum.perspectiveDivide(v1) + center,
-                        scene.frustum.perspectiveDivide(v2) + center
+                    const auto triangle = Triangle{
+                        .vertices = {
+                            scene.frustum.perspectiveDivide(v0) + center,
+                            scene.frustum.perspectiveDivide(v1) + center,
+                            scene.frustum.perspectiveDivide(v2) + center
+                        },
+                        .averageDepth = v0.z + v1.z + v2.z / 3.0f,
+                        .color = triangleColor
                     };
 
-                    canvas->drawTriangle(p0, p1, p2);
+                    trianglesToRender.emplace_back(triangle);
                 }
             }
+
+            trianglesToRender.shrink_to_fit();
+            return trianglesToRender;
         }
 
         static glm::vec3 transformPoint(const glm::vec3& point, const glm::vec3 rotationInDegrees) {
