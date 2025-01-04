@@ -12,7 +12,6 @@
 
 #include "mesh.hpp"
 #include "scene.hpp"
-#include "transformation.hpp"
 #include "canvas.hpp"
 
 namespace rasterizer {
@@ -97,9 +96,10 @@ namespace rasterizer {
 
         void update() const {
             for (Mesh& mesh : scene.meshes) {
-                mesh.eulerRotation += glm::vec3{0.005f, 0.005f, 0.01f};
-                mesh.scale.x += 0.002f;
-                mesh.scale.y += 0.001f;
+                mesh.eulerRotation += glm::vec3{0.01f, 0.01f, 0.01f};
+                mesh.translation.x += 0.01f;
+                // Put object in front of camera
+                mesh.translation.z = 5.0f;
             }
         }
 
@@ -261,11 +261,11 @@ namespace rasterizer {
                     if (backFaceCulling) {
                         const auto v01 = glm::normalize(v1 - v0);
                         const auto v02 = glm::normalize(v2 - v0);
-                        const auto normal = glm::normalize(rasterizer::cross(v01, v02));
+                        const auto normal = glm::normalize(glm::cross(v01, v02));
                         const auto triangleToCamera = glm::normalize(scene.frustum.position - v0);
 
                         // Cull if triangle normal and triangleToCamera are not pointing in the same direction
-                        if (rasterizer::dot(normal, triangleToCamera) < 0.0f) {
+                        if (glm::dot(normal, triangleToCamera) < 0.0f) {
                             continue;
                         }
                     }
@@ -300,7 +300,7 @@ namespace rasterizer {
 
         static glm::vec3 transformPoint(const glm::vec3& point, const glm::mat4& model) {
             // Offset by {0, 0, 5} to put object in front of camera
-            return glm::vec3{model * glm::vec4{point, 1.0f}} + glm::vec3{0.0f, 0.0f, 5.0f};
+            return glm::vec3{model * glm::vec4{point, 1.0f}};
         }
 
         void clearFramebuffer() const {
