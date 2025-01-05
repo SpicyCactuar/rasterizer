@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <iostream>
 #include <numeric>
+#include <numbers>
 #include <print>
 #include <stdexcept>
 
@@ -44,7 +45,11 @@ namespace rasterizer {
             const auto framebufferHeight = static_cast<std::uint32_t>(windowHeight);
 
             std::print("Display size: {} x {}\n", framebufferWidth, framebufferHeight);
-
+            frustum = new Frustum(
+                static_cast<glm::float32_t>(framebufferHeight) / static_cast<glm::float32_t>(framebufferWidth),
+                std::numbers::pi / 3.0f, // 60 degrees
+                0.01f, 100.0f
+            );
             canvas = new Canvas(framebufferWidth, framebufferHeight);
 
             framebufferTexture = createFramebufferTexture(renderer, framebufferWidth, framebufferHeight);
@@ -65,6 +70,10 @@ namespace rasterizer {
             if (canvas != nullptr) {
                 delete canvas;
                 canvas = nullptr;
+            }
+            if (frustum != nullptr) {
+                delete frustum;
+                frustum = nullptr;
             }
 
             if (renderer != nullptr) {
@@ -97,7 +106,6 @@ namespace rasterizer {
         void update() const {
             for (Mesh& mesh : scene.meshes) {
                 mesh.eulerRotation += glm::vec3{0.01f, 0.01f, 0.01f};
-                mesh.translation.x += 0.01f;
                 // Put object in front of camera
                 mesh.translation.z = 5.0f;
             }
@@ -112,13 +120,16 @@ namespace rasterizer {
         }
 
     private:
+        Scene& scene;
+
+        // TODO: Initialize in Window object to avoid having fields as pointers here
         SDL_Window* window = nullptr;
         SDL_Renderer* renderer = nullptr;
 
         Canvas* canvas = nullptr;
         SDL_Texture* framebufferTexture = nullptr;
 
-        Scene& scene;
+        Frustum* frustum;
 
         static bool initializeSDL() {
             if (SDL_Init(SDL_INIT_EVERYTHING) != EXIT_SUCCESS) {
@@ -245,6 +256,13 @@ namespace rasterizer {
         }
 
         std::vector<Triangle> computeTrianglesToRender() const {
+            const auto projection = frustum->perspectiveProjection();
+            const auto screen = glm::mat4{
+                canvas->width / 2.0f, 0.0f, 0.0f, 0.0f,
+                0.0f, canvas->height / 2.0f, 0.0f, 0.0f,
+                0.0f, 0.0f, 1.0f, 0.0f,
+                canvas->width / 2.0f, canvas->height / 2.0f, 0.0f, 1.0f
+            };
             std::vector<Triangle> trianglesToRender;
             trianglesToRender.reserve(scene.meshes.size());
 
@@ -252,17 +270,25 @@ namespace rasterizer {
                 for (std::size_t face = 0; face < mesh.faces.size(); ++face) {
                     // Extract and transform vertices
                     const auto meshModel = mesh.modelTransformation();
-                    auto [v0, v1, v2] = mesh[face].vertices;
-                    v0 = transformPoint(v0, meshModel); /*    v0     */
-                    v1 = transformPoint(v1, meshModel); /*  /    \   */
-                    v2 = transformPoint(v2, meshModel); /* v2 --- v1 */
+                    auto [v0, v1, v2] = std::apply(
+                        [](const auto&... vertices) {
+                            return std::make_tuple(glm::vec4{vertices, 1.0f}...);
+                        },
+                        mesh[face].vertices
+                    );
+                    v0 = toWorldCoordinate(v0, meshModel); /*    v0     */
+                    v1 = toWorldCoordinate(v1, meshModel); /*  /    \   */
+                    v2 = toWorldCoordinate(v2, meshModel); /* v2 --- v1 */
 
                     // Cull if backfacing
                     if (backFaceCulling) {
-                        const auto v01 = glm::normalize(v1 - v0);
-                        const auto v02 = glm::normalize(v2 - v0);
-                        const auto normal = glm::normalize(glm::cross(v01, v02));
-                        const auto triangleToCamera = glm::normalize(scene.frustum.position - v0);
+                        const auto a = glm::vec3(v0);
+                        const auto b = glm::vec3(v1);
+                        const auto c = glm::vec3(v2);
+                        const auto ab = glm::normalize(b - a);
+                        const auto ca = glm::normalize(c - a);
+                        const auto normal = glm::normalize(glm::cross(ab, ca));
+                        const auto triangleToCamera = glm::normalize(frustum->position - a);
 
                         // Cull if triangle normal and triangleToCamera are not pointing in the same direction
                         if (glm::dot(normal, triangleToCamera) < 0.0f) {
@@ -278,13 +304,12 @@ namespace rasterizer {
                     color_t b = colorSeed & 0x000000FF; // 0x000000BB
                     color_t triangleColor = a | r | g | b;
 
-                    const glm::vec2 center = {canvas->width / 2, canvas->height / 2};
                     // Draw the centered triangles of the mesh
                     const auto triangle = Triangle{
                         .vertices = {
-                            scene.frustum.perspectiveDivide(v0) + center,
-                            scene.frustum.perspectiveDivide(v1) + center,
-                            scene.frustum.perspectiveDivide(v2) + center
+                            toScreenCoordinate(v0, projection, screen),
+                            toScreenCoordinate(v1, projection, screen),
+                            toScreenCoordinate(v2, projection, screen)
                         },
                         .averageDepth = (v0.z + v1.z + v2.z) / 3.0f,
                         .color = triangleColor
@@ -298,9 +323,27 @@ namespace rasterizer {
             return trianglesToRender;
         }
 
-        static glm::vec3 transformPoint(const glm::vec3& point, const glm::mat4& model) {
-            // Offset by {0, 0, 5} to put object in front of camera
-            return glm::vec3{model * glm::vec4{point, 1.0f}};
+        static glm::vec4 toWorldCoordinate(const glm::vec4& point, const glm::mat4& model) {
+            return model * point;
+        }
+
+        static glm::vec4 toScreenCoordinate(const glm::vec4& point, const glm::mat4& projection,
+                                            const glm::mat4& screen) {
+            auto projected = projection * point;
+
+            // Fail safe to avoid division by 0
+            if (projected.w == 0.0f) {
+                return projected;
+            }
+
+            // NDC -> Screen Space
+            projected = screen * projected;
+
+            // Perspective divide
+            projected.x /= projected.w;
+            projected.y /= projected.w;
+            projected.z /= projected.w;
+            return projected;
         }
 
         void clearFramebuffer() const {

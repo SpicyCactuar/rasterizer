@@ -25,6 +25,8 @@ namespace rasterizer {
 
     class Canvas {
     public:
+        const std::uint32_t width, height;
+
         Canvas(const std::uint32_t width, const std::uint32_t height) : width(width),
                                                                         height(height) {
             buffer = createFramebuffer(width, height);
@@ -40,8 +42,6 @@ namespace rasterizer {
                 buffer = nullptr;
             }
         }
-
-        const std::uint32_t width, height;
 
         explicit operator const std::uint32_t*() const {
             return buffer;
