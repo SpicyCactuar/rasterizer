@@ -256,15 +256,11 @@ namespace rasterizer {
         }
 
         std::vector<Triangle> computeTrianglesToRender() const {
-            const auto projection = frustum->perspectiveProjection();
-            const auto screen = glm::mat4{
-                canvas->width / 2.0f, 0.0f, 0.0f, 0.0f,
-                0.0f, canvas->height / 2.0f, 0.0f, 0.0f,
-                0.0f, 0.0f, 1.0f, 0.0f,
-                canvas->width / 2.0f, canvas->height / 2.0f, 0.0f, 1.0f
-            };
             std::vector<Triangle> trianglesToRender;
             trianglesToRender.reserve(scene.meshes.size());
+
+            const auto projection = frustum->perspectiveProjection();
+            const glm::vec2 center{canvas->width / 2.0f, canvas->height / 2.0f};
 
             for (auto& mesh : scene.meshes) {
                 for (std::size_t face = 0; face < mesh.faces.size(); ++face) {
@@ -307,9 +303,10 @@ namespace rasterizer {
                     // Draw the centered triangles of the mesh
                     const auto triangle = Triangle{
                         .vertices = {
-                            toScreenCoordinate(v0, projection, screen),
-                            toScreenCoordinate(v1, projection, screen),
-                            toScreenCoordinate(v2, projection, screen)
+                            // Map from clip space to screen space
+                            center * glm::vec2(toClipCoordinate(v0, projection)) + center,
+                            center * glm::vec2(toClipCoordinate(v1, projection)) + center,
+                            center * glm::vec2(toClipCoordinate(v2, projection)) + center
                         },
                         .averageDepth = (v0.z + v1.z + v2.z) / 3.0f,
                         .color = triangleColor
@@ -327,17 +324,13 @@ namespace rasterizer {
             return model * point;
         }
 
-        static glm::vec4 toScreenCoordinate(const glm::vec4& point, const glm::mat4& projection,
-                                            const glm::mat4& screen) {
+        static glm::vec4 toClipCoordinate(const glm::vec4& point, const glm::mat4& projection) {
             auto projected = projection * point;
 
             // Fail safe to avoid division by 0
             if (projected.w == 0.0f) {
                 return projected;
             }
-
-            // NDC -> Screen Space
-            projected = screen * projected;
 
             // Perspective divide
             projected.x /= projected.w;
