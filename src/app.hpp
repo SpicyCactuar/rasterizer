@@ -14,6 +14,7 @@
 #include "mesh.hpp"
 #include "scene.hpp"
 #include "canvas.hpp"
+#include "frustum.hpp"
 
 namespace rasterizer {
     static constexpr std::uint32_t defaultWindowWidth = 1600;
@@ -307,7 +308,7 @@ namespace rasterizer {
                             center * glm::vec2(toClipCoordinate(v2, projection)) + center
                         },
                         .averageDepth = (v0.z + v1.z + v2.z) / 3.0f,
-                        .color = triangleColor
+                        .color = scene.light.modulateSurfaceColor(triangleColor, normal)
                     };
 
                     trianglesToRender.emplace_back(triangle);

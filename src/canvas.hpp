@@ -7,8 +7,6 @@
 #include "common.hpp"
 
 namespace rasterizer {
-    typedef std::uint32_t color_t;
-
     enum class PolygonMode : std::uint32_t {
         FILL = 1 << 0, // 0b0001
         LINE = 1 << 1, // 0b0010

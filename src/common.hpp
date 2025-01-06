@@ -1,6 +1,7 @@
 #pragma once
 
 namespace rasterizer {
+    typedef std::uint32_t color_t;
 
     constexpr bool isDebugMode() {
 #ifdef NDEBUG
