@@ -276,15 +276,13 @@ namespace rasterizer {
                     v1 = toWorldCoordinate(v1, meshModel); /*  /    \   */
                     v2 = toWorldCoordinate(v2, meshModel); /* v2 --- v1 */
 
+                    const auto e01 = glm::normalize(glm::vec3(v1 - v0));
+                    const auto e02 = glm::normalize(glm::vec3(v2 - v0));
+                    const auto normal = glm::normalize(glm::cross(e01, e02));
+
                     // Cull if backfacing
                     if (backFaceCulling) {
-                        const auto a = glm::vec3(v0);
-                        const auto b = glm::vec3(v1);
-                        const auto c = glm::vec3(v2);
-                        const auto ab = glm::normalize(b - a);
-                        const auto ca = glm::normalize(c - a);
-                        const auto normal = glm::normalize(glm::cross(ab, ca));
-                        const auto triangleToCamera = glm::normalize(frustum->position - a);
+                        const auto triangleToCamera = glm::normalize(frustum->position - glm::vec3(v0));
 
                         // Cull if triangle normal and triangleToCamera are not pointing in the same direction
                         if (glm::dot(normal, triangleToCamera) < 0.0f) {
@@ -294,11 +292,11 @@ namespace rasterizer {
 
                     // Compute synthetic color from face index
                     const std::uint32_t colorSeed = face * 2654435761u;
-                    color_t a = 0xFF000000; // 0xFF000000
-                    color_t r = colorSeed & 0x00FF0000; // 0x00RR0000
-                    color_t g = colorSeed & 0x0000FF00; // 0x0000GG00
-                    color_t b = colorSeed & 0x000000FF; // 0x000000BB
-                    color_t triangleColor = a | r | g | b;
+                    constexpr color_t a = 0xFF000000;
+                    const color_t r = colorSeed & 0x00FF0000; // 0x00RR0000
+                    const color_t g = colorSeed & 0x0000FF00; // 0x0000GG00
+                    const color_t b = colorSeed & 0x000000FF; // 0x000000BB
+                    const color_t triangleColor = a | r | g | b;
 
                     // Draw the centered triangles of the mesh
                     const auto triangle = Triangle{
