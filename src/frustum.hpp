@@ -18,9 +18,10 @@ namespace rasterizer {
 
         glm::mat4 perspectiveProjection() const {
             // Transpose values to account for GLM row-based memory layout
+            // Negate Y component to map to downward +Y screen space
             return glm::mat4{
                 aspect * (1.0f / std::tan(fov / 2.0f)), 0.0f, 0.0f, 0.0f,
-                0.0f, 1.0f / std::tan(fov / 2.0f), 0.0f, 0.0f,
+                0.0f, -1.0f / std::tan(fov / 2.0f), 0.0f, 0.0f,
                 0.0f, 0.0f, far / (far - near), 1.0f,
                 0.0f, 0.0f, -(far * near) / (far - near), 0.0f
             };
