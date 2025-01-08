@@ -123,7 +123,7 @@ namespace rasterizer {
     private:
         Scene& scene;
 
-        // TODO: Initialize in Window object to avoid having fields as pointers here
+        // TODO: Initialize in Window object to avoid having these fields as pointers
         SDL_Window* window = nullptr;
         SDL_Renderer* renderer = nullptr;
 
@@ -241,7 +241,7 @@ namespace rasterizer {
         }
 
         void drawScene() const {
-            auto trianglesToRender = computeTrianglesToRender();
+            /*auto trianglesToRender = computeTrianglesToRender();
 
             // Sort from back to front
             std::vector<size_t> indicesByDepth(trianglesToRender.size());
@@ -253,6 +253,16 @@ namespace rasterizer {
 
             for (const auto ti : indicesByDepth) {
                 canvas->drawTriangle(trianglesToRender[ti]);
+            }*/
+
+            for (std::uint32_t row = 0; row < brick.height; ++row) {
+                for (std::uint32_t column = 0; column < brick.width; ++column) {
+                    canvas->drawPixel(
+                        row + canvas->height / 2 - brick.height / 2,
+                        column + canvas->width / 2 - brick.width / 2,
+                        brick.data[row * brick.width + column]
+                    );
+                }
             }
         }
 

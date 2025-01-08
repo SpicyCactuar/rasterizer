@@ -4,7 +4,7 @@
 
 namespace rasterizer {
     struct Frustum {
-        // TODO: Use std::float32 when Clang supports it
+        // TODO: Use std::float32_t when Clang supports it
         // https://github.com/llvm/llvm-project/issues/97335
         const glm::float32_t aspect; // aspect = height / width
         const glm::float32_t fov;

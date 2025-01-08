@@ -5,8 +5,7 @@
 #include "canvas.hpp"
 
 namespace rasterizer {
-    class DirectionalLight {
-    public:
+    struct DirectionalLight {
         const glm::vec3 direction;
 
         color_t modulateSurfaceColor(const color_t color, const glm::vec3& normal) const {

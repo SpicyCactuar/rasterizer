@@ -11,7 +11,7 @@ int main(int argc, char* argv[]) try {
     static constexpr std::uint32_t FPS = 120;
     static constexpr std::uint32_t FRAME_TIME = 1000 / FPS;
 
-    const rasterizer::Mesh cube = rasterizer::parseObj("../assets/f22.obj");
+    const rasterizer::Mesh cube = rasterizer::parseObj("../assets/cube.obj");
     rasterizer::Scene scene({cube});
     rasterizer::Application app(title, scene);
 

@@ -4,9 +4,12 @@
 
 #include <glm/glm.hpp>
 
+#include "texture.hpp"
+
 namespace rasterizer {
     struct TriangleFace {
         const std::array<glm::vec3, 3> vertices;
+        const rasterizer::uv uv;
     };
 
     /*
@@ -17,15 +20,19 @@ namespace rasterizer {
     struct Mesh {
         const std::vector<glm::vec3> vertices;
         const std::vector<glm::uvec3> faces;
+        const std::vector<rasterizer::uv> uvs;
         glm::vec3 eulerRotation{0.0f};
         glm::vec3 scale{1.0f};
         glm::vec3 translation{0.0f};
 
         TriangleFace operator[](const std::size_t index) const {
             return {
-                vertices[faces[index][0]],
-                vertices[faces[index][1]],
-                vertices[faces[index][2]]
+                .vertices = {
+                    vertices[faces[index][0]],
+                    vertices[faces[index][1]],
+                    vertices[faces[index][2]]
+                },
+                .uv = uvs[index]
             };
         }
 
