@@ -57,6 +57,18 @@ namespace rasterizer {
             }
         }
 
+        void drawTexel(const std::int32_t row, const std::int32_t column,
+                       const glm::ivec2& p0, const glm::ivec2& p1, const glm::ivec2& p2,
+                       const rasterizer::uv& uv0, const rasterizer::uv& uv1, const rasterizer::uv& uv2) const {
+            const auto barycentric = barycentricWeights(p0, p1, p2, {column, row});
+            const color_t barycentricRed = std::abs(static_cast<std::int32_t>(barycentric.x * 0xFF) << 16);
+            const color_t barycentricBlue = std::abs(static_cast<std::int32_t>(barycentric.y * 0xFF) << 8);
+            const color_t barycentricGreen = std::abs(static_cast<std::int32_t>(barycentric.z * 0xFF));
+
+            // TODO: Retrieve color from texture
+            drawPixel(row, column, 0xFF000000 | barycentricRed | barycentricBlue | barycentricGreen);
+        }
+
         void drawRectangle(const std::int32_t x, const std::int32_t y,
                            const std::uint32_t width, const std::uint32_t height,
                            const color_t color) const {
@@ -317,9 +329,8 @@ namespace rasterizer {
                         std::swap(xStart, xEnd);
                     }
 
-                    for (std::int32_t x = xStart; x <= xEnd; ++x) {
-                        // TODO: Color from texture
-                        drawPixel(y, x, x % 2 == 0 && y % 2 == 0 ? 0xFFFF00FF : 0xFF000000);
+                    for (std::int32_t x = xStart; x < xEnd; ++x) {
+                        drawTexel(y, x, p0, p1, p2, uv0, uv1, uv2);
                     }
                 }
             }
@@ -341,9 +352,8 @@ namespace rasterizer {
                         std::swap(xStart, xEnd);
                     }
 
-                    for (std::int32_t x = xStart; x <= xEnd; ++x) {
-                        // TODO: Color from texture
-                        drawPixel(y, x, x % 2 == 0 && y % 2 == 0 ? 0xFFFF0000 : 0xFF000000);
+                    for (std::int32_t x = xStart; x < xEnd; ++x) {
+                        drawTexel(y, x, p0, p1, p2, uv0, uv1, uv2);
                     }
                 }
             }
@@ -384,6 +394,60 @@ namespace rasterizer {
                 std::swap(p0, p1);
                 std::swap(uv0, uv1);
             }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////
+        //
+        // Return the barycentric weights alpha, beta, and gamma for point p
+        //
+        //         (B)
+        //         /|\
+        //        / | \
+        //       /  |  \
+        //      /  (P)  \
+        //     /  /   \  \
+        //    / /       \ \
+        //   //           \\
+        //  (A)------------(C)
+        //
+        // Based on diagram by: Pikuma (Gustavo Pezzi)
+        //
+        ///////////////////////////////////////////////////////////////////////////////
+        // TODO: Revise
+        static glm::vec3 barycentricWeights(const glm::ivec2& a, const glm::ivec2& b, const glm::ivec2& c,
+                                            const glm::ivec2& p) {
+            const auto ac = c - a;
+            const auto ab = b - a;
+            const auto ap = p - a;
+            const auto pc = c - p;
+            const auto pb = b - p;
+
+            /*
+             * Compute the ratios of the areas of the triangles
+             * The cross-product of the edges of a triangle are equal to the area of their corresponding parallelograms
+             * By taking half of each, both in the numerator and denominator, the factor cancels out
+             * Therefore, we only need to compute the length of the resulting cross-product:
+             *      || [x0 y0 0] x [x1 y1 0] || = || [0 0 z01] || = (x0 * y1 - y0 & x1)
+             * We are dealing with 2D points in the xy-plane => the cross-product is always in the z-axis direction
+             *
+             * It is important to be consistent regarding the winding order of the cross products so that the
+             * sign of the result is positive (either +/+ or -/-, but not mixed).
+             */
+
+            // area(ABC) = || AC x AB || / 2.0f
+            // Avoid the division as it cancels out in the following computations
+            const glm::float32_t abcArea = ac.x * ab.y - ac.y * ab.x;
+
+            // α = area(PBC) / area(ABC) = || PC x PB || / || AC x AB ||
+            const glm::float32_t alpha = (pc.x * pb.y - pc.y * pb.x) / abcArea;
+
+            // β = area(APC) / area(ABC) = || AC x AP || / || AC x AB ||
+            const glm::float32_t beta = (ac.x * ap.y - ac.y * ap.x) / abcArea;
+
+            // γ = 1.0f - α - β
+            const glm::float32_t gamma = 1.0f - alpha - beta;
+
+            return {alpha, beta, gamma};
         }
     };
 }

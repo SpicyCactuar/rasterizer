@@ -1,6 +1,7 @@
 #pragma once
 
 namespace rasterizer {
+    // TODO: Replace custom class with plain glm::vec2
     struct uv {
         glm::vec2 value;
 
