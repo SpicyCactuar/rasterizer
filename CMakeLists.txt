@@ -12,7 +12,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 # Find SDL2 and GLM packages
-# TODO: Fallback to FetchContent if packages are not found
+# TODO: Research how to fallback to FetchContent if local package is not found
+# TODO: Not as trivial as it seems since there are platform dependant flags/macros/etc that must be accounted for
 find_package(SDL2 REQUIRED)
 find_package(glm CONFIG REQUIRED)
 

@@ -9,7 +9,7 @@
 namespace rasterizer {
     struct TriangleFace {
         const std::array<glm::vec3, 3> vertices;
-        const rasterizer::uv uv;
+        const std::array<rasterizer::uv, 3> uvs;
     };
 
     /*
@@ -26,13 +26,21 @@ namespace rasterizer {
         glm::vec3 translation{0.0f};
 
         TriangleFace operator[](const std::size_t index) const {
+            const auto i0 = faces[index][0];
+            const auto i1 = faces[index][1];
+            const auto i2 = faces[index][2];
+
             return {
                 .vertices = {
-                    vertices[faces[index][0]],
-                    vertices[faces[index][1]],
-                    vertices[faces[index][2]]
+                    vertices[i0],
+                    vertices[i1],
+                    vertices[i2]
                 },
-                .uv = uvs[index]
+                .uvs = {
+                    uvs[i0],
+                    uvs[i1],
+                    uvs[i2],
+                }
             };
         }
 

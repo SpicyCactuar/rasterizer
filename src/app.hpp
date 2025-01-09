@@ -223,11 +223,25 @@ namespace rasterizer {
                     canvas->enable(PolygonMode::FILL);
                     canvas->disable(PolygonMode::LINE);
                     canvas->disable(PolygonMode::POINT);
+                    canvas->set(FillMode::SOLID);
                     break;
                 case SDLK_4:
                     canvas->enable(PolygonMode::FILL);
                     canvas->enable(PolygonMode::LINE);
                     canvas->disable(PolygonMode::POINT);
+                    canvas->set(FillMode::SOLID);
+                    break;
+                case SDLK_5:
+                    canvas->enable(PolygonMode::FILL);
+                    canvas->enable(PolygonMode::LINE);
+                    canvas->disable(PolygonMode::POINT);
+                    canvas->set(FillMode::TEXTURE);
+                    break;
+                case SDLK_6:
+                    canvas->enable(PolygonMode::FILL);
+                    canvas->disable(PolygonMode::LINE);
+                    canvas->disable(PolygonMode::POINT);
+                    canvas->set(FillMode::TEXTURE);
                     break;
                 case SDLK_c:
                     backFaceCulling = true;
@@ -241,7 +255,7 @@ namespace rasterizer {
         }
 
         void drawScene() const {
-            /*auto trianglesToRender = computeTrianglesToRender();
+            auto trianglesToRender = computeTrianglesToRender();
 
             // Sort from back to front
             std::vector<size_t> indicesByDepth(trianglesToRender.size());
@@ -253,16 +267,6 @@ namespace rasterizer {
 
             for (const auto ti : indicesByDepth) {
                 canvas->drawTriangle(trianglesToRender[ti]);
-            }*/
-
-            for (std::uint32_t row = 0; row < brick.height; ++row) {
-                for (std::uint32_t column = 0; column < brick.width; ++column) {
-                    canvas->drawPixel(
-                        row + canvas->height / 2 - brick.height / 2,
-                        column + canvas->width / 2 - brick.width / 2,
-                        brick.data[row * brick.width + column]
-                    );
-                }
             }
         }
 
@@ -317,6 +321,7 @@ namespace rasterizer {
                             center * glm::vec2(toClipCoordinate(v1, projection)) + center,
                             center * glm::vec2(toClipCoordinate(v2, projection)) + center
                         },
+                        .uvs = mesh[face].uvs,
                         .averageDepth = (v0.z + v1.z + v2.z) / 3.0f,
                         .color = scene.light.modulateSurfaceColor(triangleColor, normal)
                     };

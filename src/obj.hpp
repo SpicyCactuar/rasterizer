@@ -70,8 +70,8 @@ namespace rasterizer {
                     std::print(std::cerr, "Failed to parse face line {}: {}", lineCount, line);
                 }
             } else if (line.starts_with("vt ")) {
-                if (glm::float32_t u, v; std::sscanf(line.c_str(), "vt %f %f", &u, &v) == 2) {
-                    uvs.emplace_back(u, v);
+                if (glm::vec2 uv; std::sscanf(line.c_str(), "vt %f %f", &uv[0], &uv[1]) == 2) {
+                    uvs.emplace_back(uv);
                 } else {
                     std::print(std::cerr, "Failed to parse uv line {}: {}", lineCount, line);
                 }
