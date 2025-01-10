@@ -124,6 +124,7 @@ namespace rasterizer {
         Scene& scene;
 
         // TODO: Initialize in Window object to avoid having these fields as pointers
+        // TODO: Use smart pointers
         SDL_Window* window = nullptr;
         SDL_Renderer* renderer = nullptr;
 
