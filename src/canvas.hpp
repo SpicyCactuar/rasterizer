@@ -61,12 +61,22 @@ namespace rasterizer {
                        const glm::ivec2& p0, const glm::ivec2& p1, const glm::ivec2& p2,
                        const rasterizer::uv& uv0, const rasterizer::uv& uv1, const rasterizer::uv& uv2) const {
             const auto barycentric = barycentricWeights(p0, p1, p2, {column, row});
-            const color_t barycentricRed = std::abs(static_cast<std::int32_t>(barycentric.x * 0xFF) << 16);
-            const color_t barycentricBlue = std::abs(static_cast<std::int32_t>(barycentric.y * 0xFF) << 8);
-            const color_t barycentricGreen = std::abs(static_cast<std::int32_t>(barycentric.z * 0xFF));
+            const glm::float32_t barycentricU = barycentric.x * uv0.value.x +
+                                                barycentric.y * uv1.value.x +
+                                                barycentric.z * uv2.value.x;
 
-            // TODO: Retrieve color from texture
-            drawPixel(row, column, 0xFF000000 | barycentricRed | barycentricBlue | barycentricGreen);
+            const glm::float32_t barycentricV = barycentric.x * uv0.value.y +
+                                                barycentric.y * uv1.value.y +
+                                                barycentric.z * uv2.value.y;
+
+            // Map the UV coordinate to the full texture width and height
+            // Account for indexing, therefore we subtract 1 to the extents
+            const auto xTex = std::abs(
+                static_cast<std::int32_t>(barycentricU * (static_cast<std::int32_t>(brick.width) - 1)));
+            const auto yTex = std::abs(
+                static_cast<std::int32_t>(barycentricV * (static_cast<std::int32_t>(brick.height) - 1)));
+
+            drawPixel(row, column, brick.data[yTex * brick.width + xTex]);
         }
 
         void drawRectangle(const std::int32_t x, const std::int32_t y,
@@ -413,7 +423,6 @@ namespace rasterizer {
         // Based on diagram by: Pikuma (Gustavo Pezzi)
         //
         ///////////////////////////////////////////////////////////////////////////////
-        // TODO: Revise
         static glm::vec3 barycentricWeights(const glm::ivec2& a, const glm::ivec2& b, const glm::ivec2& c,
                                             const glm::ivec2& p) {
             const auto ac = c - a;

@@ -106,7 +106,7 @@ namespace rasterizer {
 
         void update() const {
             for (Mesh& mesh : scene.meshes) {
-                mesh.eulerRotation += glm::vec3{0.0f, 0.01f, 0.0f};
+                mesh.eulerRotation += glm::vec3{0.01f, 0.01f, 0.01f};
                 // Put object in front of camera
                 mesh.translation.z = 5.0f;
             }
@@ -278,7 +278,7 @@ namespace rasterizer {
             const glm::vec2 center{canvas->width / 2.0f, canvas->height / 2.0f};
 
             for (auto& mesh : scene.meshes) {
-                for (std::size_t face = 0; face < mesh.faces.size(); ++face) {
+                for (std::size_t face = 0; face < mesh.facesAmount(); ++face) {
                     // Extract and transform vertices
                     const auto meshModel = mesh.modelTransformation();
                     auto [v0, v1, v2] = std::apply(

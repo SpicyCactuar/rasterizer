@@ -19,27 +19,39 @@ namespace rasterizer {
      */
     struct Mesh {
         const std::vector<glm::vec3> vertices;
-        const std::vector<glm::uvec3> faces;
         const std::vector<rasterizer::uv> uvs;
+        const std::vector<std::uint32_t> faceIndices;
+        const std::vector<std::uint32_t> uvIndices;
         glm::vec3 eulerRotation{0.0f};
         glm::vec3 scale{1.0f};
         glm::vec3 translation{0.0f};
 
+        size_t facesAmount() const {
+            return faceIndices.size() / 3;
+        }
+
+        // TODO: Allow for per-vertex optional uv texturing, right now if there is a mix this will assign incorrectly
         TriangleFace operator[](const std::size_t index) const {
-            const auto i0 = faces[index][0];
-            const auto i1 = faces[index][1];
-            const auto i2 = faces[index][2];
+            const size_t fi = 3 * index;
+
+            const auto v0 = faceIndices[fi];
+            const auto v1 = faceIndices[fi + 1];
+            const auto v2 = faceIndices[fi + 2];
+
+            const auto vt0 = uvIndices[fi];
+            const auto vt1 = uvIndices[fi + 1];
+            const auto vt2 = uvIndices[fi + 2];
 
             return {
                 .vertices = {
-                    vertices[i0],
-                    vertices[i1],
-                    vertices[i2]
+                    vertices[v0],
+                    vertices[v1],
+                    vertices[v2]
                 },
                 .uvs = {
-                    uvs[i0],
-                    uvs[i1],
-                    uvs[i2],
+                    uvs[vt0],
+                    uvs[vt1],
+                    uvs[vt2],
                 }
             };
         }
