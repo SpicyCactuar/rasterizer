@@ -18,13 +18,13 @@ namespace rasterizer {
         TEXTURE = 1 << 1,
     };
 
-    static constexpr color_t triangleFillColor = 0xFF4C1D95;
+    static constexpr color_t defaultTriangleFillColor = 0xFF4C1D95;
 
     struct Triangle {
         const std::array<glm::vec4, 3> vertices;
         const std::array<rasterizer::uv, 3> uvs;
         const glm::float32_t averageDepth;
-        const color_t color = triangleFillColor;
+        const color_t solidColor = defaultTriangleFillColor;
     };
 
     class Canvas {
@@ -58,23 +58,34 @@ namespace rasterizer {
         }
 
         void drawTexel(const std::int32_t row, const std::int32_t column,
+                       const glm::vec4& v0, const glm::vec4& v1, const glm::vec4& v2,
                        const glm::ivec2& p0, const glm::ivec2& p1, const glm::ivec2& p2,
                        const rasterizer::uv& uv0, const rasterizer::uv& uv1, const rasterizer::uv& uv2) const {
             const auto barycentric = barycentricWeights(p0, p1, p2, {column, row});
-            const glm::float32_t barycentricU = barycentric.x * uv0.value.x +
-                                                barycentric.y * uv1.value.x +
-                                                barycentric.z * uv2.value.x;
 
-            const glm::float32_t barycentricV = barycentric.x * uv0.value.y +
-                                                barycentric.y * uv1.value.y +
-                                                barycentric.z * uv2.value.y;
+            // Perspective-correct interpolation
+            // TODO: Optimize to a single division
+            // https://courses.pikuma.com/courses/take/learn-computer-graphics-programming/lessons/11822193-perspective-correct-interpolation-code/discussions/886660
+            const glm::float32_t wReciprocalInterpolated = barycentric.x * (1 / v0.w) +
+                                                           barycentric.y * (1 / v1.w) +
+                                                           barycentric.z * (1 / v2.w);
+
+            // v.w holds the depth information but does not interpolate linearly, (1 / v.w) does
+            // Interpolate linearly and undo division at the end
+            const glm::float32_t uInterpolated = (barycentric.x * (uv0.value.x / v0.w) +
+                                                  barycentric.y * (uv1.value.x / v1.w) +
+                                                  barycentric.z * (uv2.value.x / v2.w)) / wReciprocalInterpolated;
+
+            const glm::float32_t vInterpolated = (barycentric.x * (uv0.value.y / v0.w) +
+                                                  barycentric.y * (uv1.value.y / v1.w) +
+                                                  barycentric.z * (uv2.value.y / v2.w)) / wReciprocalInterpolated;
 
             // Map the UV coordinate to the full texture width and height
             // Account for indexing, therefore we subtract 1 to the extents
             const auto xTex = std::abs(
-                static_cast<std::int32_t>(barycentricU * (static_cast<std::int32_t>(brick.width) - 1)));
+                static_cast<std::int32_t>(uInterpolated * (static_cast<std::int32_t>(brick.width) - 1)));
             const auto yTex = std::abs(
-                static_cast<std::int32_t>(barycentricV * (static_cast<std::int32_t>(brick.height) - 1)));
+                static_cast<std::int32_t>(vInterpolated * (static_cast<std::int32_t>(brick.height) - 1)));
 
             drawPixel(row, column, brick.data[yTex * brick.width + xTex]);
         }
@@ -122,12 +133,9 @@ namespace rasterizer {
         }
 
         void drawTriangle(const Triangle& triangle) const {
-            const auto [p0, p1, p2] = std::apply(
-                [](const auto&... vertices) {
-                    return std::make_tuple(glm::ivec2{vertices}...);
-                },
-                triangle.vertices
-            );
+            // Convention: 3 or 4 dimension vertices -> vN, 2 dimension points pN
+            const auto [v0, v1, v2] = triangle.vertices;
+            const auto [p0, p1, p2] = std::make_tuple(glm::vec2{v0}, glm::vec2{v1}, glm::vec2{v2});
             const auto& [uv0, uv1, uv2] = triangle.uvs;
             static constexpr color_t triangleLineColor = 0xFFA78BFA;
             static constexpr color_t trianglePointColor = 0xFF7C3AED;
@@ -139,10 +147,10 @@ namespace rasterizer {
 
             if (drawTriangleFill) {
                 if (triangleFillSolid) {
-                    drawSolidTriangle(p0, p1, p2, triangle.color);
+                    drawSolidTriangle(p0, p1, p2, triangle.solidColor);
                 } else {
                     // Only 2 fill modes, therefore this is the FillMode::TEXTURED case
-                    drawTexturedTriangle(p0, p1, p2, uv0, uv1, uv2);
+                    drawTexturedTriangle(v0, v1, v2, p0, p1, p2, uv0, uv1, uv2);
                 }
             }
 
@@ -318,9 +326,10 @@ namespace rasterizer {
             }
         }
 
-        void drawTexturedTriangle(glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2,
+        void drawTexturedTriangle(glm::vec4 v0, glm::vec4 v1, glm::vec4 v2,
+                                  glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2,
                                   rasterizer::uv uv0, rasterizer::uv uv1, rasterizer::uv uv2) const {
-            sortAscendingVertically(p0, p1, p2, uv0, uv1, uv2);
+            sortAscendingVertically(v0, v1, v2, p0, p1, p2, uv0, uv1, uv2);
 
             // Compute inverse slopes 0 -> 1 and 0 -> 2
             glm::float32_t invSlope01 = 0.0f;
@@ -345,7 +354,7 @@ namespace rasterizer {
                     }
 
                     for (std::int32_t x = xStart; x < xEnd; ++x) {
-                        drawTexel(y, x, p0, p1, p2, uv0, uv1, uv2);
+                        drawTexel(y, x, v0, v1, v2, p0, p1, p2, uv0, uv1, uv2);
                     }
                 }
             }
@@ -368,7 +377,7 @@ namespace rasterizer {
                     }
 
                     for (std::int32_t x = xStart; x < xEnd; ++x) {
-                        drawTexel(y, x, p0, p1, p2, uv0, uv1, uv2);
+                        drawTexel(y, x, v0, v1, v2, p0, p1, p2, uv0, uv1, uv2);
                     }
                 }
             }
@@ -390,23 +399,27 @@ namespace rasterizer {
             }
         }
 
-        static void sortAscendingVertically(glm::ivec2& p0, glm::ivec2& p1, glm::ivec2& p2,
+        static void sortAscendingVertically(glm::vec4& v0, glm::vec4& v1, glm::vec4& v2,
+                                            glm::ivec2& p0, glm::ivec2& p1, glm::ivec2& p2,
                                             rasterizer::uv& uv0, rasterizer::uv& uv1, rasterizer::uv& uv2) {
             // Sort such that p0.y <= p1.y <= p2.y
-            // Swap uvs accordingly
+            // Swap vertices and uvs accordingly
             if (p1.y < p0.y) {
                 // p1.y < p0.y => p0.y < p1.y
                 std::swap(p0, p1);
+                std::swap(v0, v1);
                 std::swap(uv0, uv1);
             }
             if (p2.y < p1.y) {
                 // p2.y < p1.y => p1.y < p2.y
                 std::swap(p1, p2);
+                std::swap(v1, v2);
                 std::swap(uv1, uv2);
             }
             if (p1.y < p0.y) {
                 // p1.y < p0.y => p0.y < p1.y
                 std::swap(p0, p1);
+                std::swap(v0, v1);
                 std::swap(uv0, uv1);
             }
         }

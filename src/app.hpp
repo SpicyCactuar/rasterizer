@@ -106,7 +106,7 @@ namespace rasterizer {
 
         void update() const {
             for (Mesh& mesh : scene.meshes) {
-                mesh.eulerRotation += glm::vec3{0.01f, 0.01f, 0.01f};
+                mesh.eulerRotation += glm::vec3{0.0f, 0.01f, 0.0f};
                 // Put object in front of camera
                 mesh.translation.z = 5.0f;
             }
@@ -329,7 +329,7 @@ namespace rasterizer {
                         },
                         .uvs = mesh[face].uvs,
                         .averageDepth = (v0.z + v1.z + v2.z) / 3.0f,
-                        .color = scene.light.modulateSurfaceColor(triangleColor, normal)
+                        .solidColor = scene.light.modulateSurfaceColor(triangleColor, normal)
                     };
 
                     trianglesToRender.emplace_back(triangle);
