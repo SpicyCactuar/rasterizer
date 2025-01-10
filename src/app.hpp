@@ -133,6 +133,8 @@ namespace rasterizer {
 
         Frustum* frustum;
 
+        bool backFaceCulling = true;
+
         static bool initializeSDL() {
             if (SDL_Init(SDL_INIT_EVERYTHING) != EXIT_SUCCESS) {
                 std::print("SDL_Init Error: %s\n", SDL_GetError());
@@ -202,8 +204,6 @@ namespace rasterizer {
 
             return framebufferTexture;
         }
-
-        bool backFaceCulling = true;
 
         void processKeypress(const SDL_Keycode keycode) {
             switch (keycode) {
@@ -276,7 +276,12 @@ namespace rasterizer {
             trianglesToRender.reserve(scene.meshes.size());
 
             const auto projection = frustum->perspectiveProjection();
-            const glm::vec2 center{canvas->width / 2.0f, canvas->height / 2.0f};
+            const auto viewport = glm::mat4{
+                canvas->width / 2.0f, 0.0f, 0.0f, 0.0f,
+                0.0f, canvas->height / 2.0f, 0.0f, 0.0f,
+                0.0f, 0.0f, 1.0f, 0.0f,
+                canvas->width / 2.0f, canvas->height / 2.0f, 0.0f, 1.0f
+            };
 
             for (auto& mesh : scene.meshes) {
                 for (std::size_t face = 0; face < mesh.facesAmount(); ++face) {
@@ -296,7 +301,7 @@ namespace rasterizer {
                     const auto e02 = glm::normalize(glm::vec3(v2 - v0));
                     const auto normal = glm::normalize(glm::cross(e01, e02));
 
-                    // Cull if backfacing
+                    // Cull if necessary
                     if (backFaceCulling) {
                         const auto triangleToCamera = glm::normalize(frustum->position - glm::vec3(v0));
 
@@ -318,9 +323,9 @@ namespace rasterizer {
                     const auto triangle = Triangle{
                         .vertices = {
                             // Map from clip space to screen space
-                            center * glm::vec2(toClipCoordinate(v0, projection)) + center,
-                            center * glm::vec2(toClipCoordinate(v1, projection)) + center,
-                            center * glm::vec2(toClipCoordinate(v2, projection)) + center
+                            toScreenCoordinate(v0, projection, viewport),
+                            toScreenCoordinate(v1, projection, viewport),
+                            toScreenCoordinate(v2, projection, viewport)
                         },
                         .uvs = mesh[face].uvs,
                         .averageDepth = (v0.z + v1.z + v2.z) / 3.0f,
@@ -339,8 +344,14 @@ namespace rasterizer {
             return model * point;
         }
 
-        static glm::vec4 toClipCoordinate(const glm::vec4& point, const glm::mat4& projection) {
+        static glm::vec4 toScreenCoordinate(const glm::vec4& point,
+                                            const glm::mat4& projection,
+                                            const glm::mat4& viewport) {
+            // World-space -> Clip-space
             auto projected = projection * point;
+
+            // {x, y} Clip-space -> {x, y} Screen-space
+            projected = viewport * projected;
 
             // Fail safe to avoid division by 0
             if (projected.w == 0.0f) {

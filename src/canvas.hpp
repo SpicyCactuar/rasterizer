@@ -21,7 +21,7 @@ namespace rasterizer {
     static constexpr color_t triangleFillColor = 0xFF4C1D95;
 
     struct Triangle {
-        const std::array<glm::ivec2, 3> vertices;
+        const std::array<glm::vec4, 3> vertices;
         const std::array<rasterizer::uv, 3> uvs;
         const glm::float32_t averageDepth;
         const color_t color = triangleFillColor;
@@ -122,7 +122,12 @@ namespace rasterizer {
         }
 
         void drawTriangle(const Triangle& triangle) const {
-            const auto& [p0, p1, p2] = triangle.vertices;
+            const auto [p0, p1, p2] = std::apply(
+                [](const auto&... vertices) {
+                    return std::make_tuple(glm::ivec2{vertices}...);
+                },
+                triangle.vertices
+            );
             const auto& [uv0, uv1, uv2] = triangle.uvs;
             static constexpr color_t triangleLineColor = 0xFFA78BFA;
             static constexpr color_t trianglePointColor = 0xFF7C3AED;
