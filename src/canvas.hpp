@@ -25,6 +25,7 @@ namespace rasterizer {
         const std::array<rasterizer::uv, 3> uvs;
         const glm::float32_t averageDepth;
         const color_t solidColor = defaultTriangleFillColor;
+        const Surface* surface = nullptr;
     };
 
     class Canvas {
@@ -60,11 +61,12 @@ namespace rasterizer {
         void drawTexel(const std::int32_t row, const std::int32_t column,
                        const glm::vec4& v0, const glm::vec4& v1, const glm::vec4& v2,
                        const glm::ivec2& p0, const glm::ivec2& p1, const glm::ivec2& p2,
-                       const rasterizer::uv& uv0, const rasterizer::uv& uv1, const rasterizer::uv& uv2) const {
+                       const rasterizer::uv& uv0, const rasterizer::uv& uv1, const rasterizer::uv& uv2,
+                       const Surface* surface) const {
             const auto barycentric = barycentricWeights(p0, p1, p2, {column, row});
 
             // Perspective-correct interpolation
-            // TODO: Optimize to a single division
+            // TODO: Optimize into a single division
             // https://courses.pikuma.com/courses/take/learn-computer-graphics-programming/lessons/11822193-perspective-correct-interpolation-code/discussions/886660
             const glm::float32_t wReciprocalInterpolated = barycentric.x * (1 / v0.w) +
                                                            barycentric.y * (1 / v1.w) +
@@ -82,12 +84,12 @@ namespace rasterizer {
 
             // Map the UV coordinate to the full texture width and height
             // Account for indexing, therefore we subtract 1 to the extents
-            const auto xTex = std::abs(
-                static_cast<std::int32_t>(uInterpolated * (static_cast<std::int32_t>(brick.width) - 1)));
-            const auto yTex = std::abs(
-                static_cast<std::int32_t>(vInterpolated * (static_cast<std::int32_t>(brick.height) - 1)));
+            const std::size_t xTex = std::abs(
+                static_cast<std::int32_t>(uInterpolated * (static_cast<std::int32_t>(surface->width) - 1)));
+            const std::size_t yTex = std::abs(
+                static_cast<std::int32_t>(vInterpolated * (static_cast<std::int32_t>(surface->height) - 1)));
 
-            drawPixel(row, column, brick.data[yTex * brick.width + xTex]);
+            drawPixel(row, column, (*surface)[yTex * surface->width + xTex]);
         }
 
         void drawRectangle(const std::int32_t x, const std::int32_t y,
@@ -150,7 +152,7 @@ namespace rasterizer {
                     drawSolidTriangle(p0, p1, p2, triangle.solidColor);
                 } else {
                     // Only 2 fill modes, therefore this is the FillMode::TEXTURED case
-                    drawTexturedTriangle(v0, v1, v2, p0, p1, p2, uv0, uv1, uv2);
+                    drawTexturedTriangle(v0, v1, v2, p0, p1, p2, uv0, uv1, uv2, triangle.surface);
                 }
             }
 
@@ -328,7 +330,8 @@ namespace rasterizer {
 
         void drawTexturedTriangle(glm::vec4 v0, glm::vec4 v1, glm::vec4 v2,
                                   glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2,
-                                  rasterizer::uv uv0, rasterizer::uv uv1, rasterizer::uv uv2) const {
+                                  rasterizer::uv uv0, rasterizer::uv uv1, rasterizer::uv uv2,
+                                  const Surface* surface) const {
             sortAscendingVertically(v0, v1, v2, p0, p1, p2, uv0, uv1, uv2);
 
             // Compute inverse slopes 0 -> 1 and 0 -> 2
@@ -354,7 +357,7 @@ namespace rasterizer {
                     }
 
                     for (std::int32_t x = xStart; x < xEnd; ++x) {
-                        drawTexel(y, x, v0, v1, v2, p0, p1, p2, uv0, uv1, uv2);
+                        drawTexel(y, x, v0, v1, v2, p0, p1, p2, uv0, uv1, uv2, surface);
                     }
                 }
             }
@@ -377,7 +380,7 @@ namespace rasterizer {
                     }
 
                     for (std::int32_t x = xStart; x < xEnd; ++x) {
-                        drawTexel(y, x, v0, v1, v2, p0, p1, p2, uv0, uv1, uv2);
+                        drawTexel(y, x, v0, v1, v2, p0, p1, p2, uv0, uv1, uv2, surface);
                     }
                 }
             }
@@ -441,6 +444,7 @@ namespace rasterizer {
         // Based on diagram by: Pikuma (Gustavo Pezzi)
         //
         ///////////////////////////////////////////////////////////////////////////////
+        // TODO: Make robust by enforcing values within [0..1] and sum to 1
         static glm::vec3 barycentricWeights(const glm::ivec2& a, const glm::ivec2& b, const glm::ivec2& c,
                                             const glm::ivec2& p) {
             const auto ac = c - a;

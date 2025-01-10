@@ -7,9 +7,11 @@
 #include <numbers>
 #include <print>
 #include <stdexcept>
+#include <filesystem>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_render.h>
+#include <SDL2/SDL_image.h>
 
 #include "mesh.hpp"
 #include "scene.hpp"
@@ -58,12 +60,32 @@ namespace rasterizer {
                 throw std::runtime_error("Failed to initialize framebuffer texture");
             }
 
+            // TODO: Load asset as part of Scene
+            cubeSurface = loadPngSurface("../assets/cube.png", renderer);
+            if (cubeSurface == nullptr) {
+                throw std::runtime_error("Failed to load cube surface");
+            }
+
+            brickSurface = loadDataSurface(reinterpret_cast<const std::uint32_t*>(brickData.data()),
+                                           brickWidth, brickHeight, renderer);
+            if (brickSurface == nullptr) {
+                throw std::runtime_error("Failed to load brick surface");
+            }
+
             isRunning = true;
         }
 
         ~Application() {
             isRunning = false;
 
+            if (cubeSurface != nullptr) {
+                delete cubeSurface;
+                cubeSurface = nullptr;
+            }
+            if (brickSurface != nullptr) {
+                delete brickSurface;
+                brickSurface = nullptr;
+            }
             if (framebufferTexture != nullptr) {
                 SDL_DestroyTexture(framebufferTexture);
                 framebufferTexture = nullptr;
@@ -85,6 +107,7 @@ namespace rasterizer {
                 SDL_DestroyWindow(window);
                 window = nullptr;
             }
+            IMG_Quit();
             SDL_Quit();
         }
 
@@ -135,9 +158,18 @@ namespace rasterizer {
 
         bool backFaceCulling = true;
 
+        Surface* cubeSurface = nullptr;
+        Surface* brickSurface = nullptr;
+
         static bool initializeSDL() {
             if (SDL_Init(SDL_INIT_EVERYTHING) != EXIT_SUCCESS) {
                 std::print("SDL_Init Error: %s\n", SDL_GetError());
+                return false;
+            }
+
+            // IMG_Init returns a bit mask
+            if ((IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) != IMG_INIT_PNG) {
+                printf("IMG_Init Error: %s\n", IMG_GetError());
                 return false;
             }
 
@@ -259,16 +291,20 @@ namespace rasterizer {
             auto trianglesToRender = computeTrianglesToRender();
 
             // Sort from back to front
-            std::vector<size_t> indicesByDepth(trianglesToRender.size());
+            std::vector<std::size_t> indicesByDepth(trianglesToRender.size());
             std::iota(indicesByDepth.begin(), indicesByDepth.end(), 0);
             std::sort(indicesByDepth.begin(), indicesByDepth.end(),
-                      [&trianglesToRender](const size_t t1, const size_t t2) {
+                      [&trianglesToRender](const std::size_t t1, const std::size_t t2) {
                           return trianglesToRender[t1].averageDepth > trianglesToRender[t2].averageDepth;
                       });
 
+            cubeSurface->lock();
+            brickSurface->lock();
             for (const auto ti : indicesByDepth) {
                 canvas->drawTriangle(trianglesToRender[ti]);
             }
+            cubeSurface->unlock();
+            brickSurface->unlock();
         }
 
         std::vector<Triangle> computeTrianglesToRender() const {
@@ -329,7 +365,8 @@ namespace rasterizer {
                         },
                         .uvs = mesh[face].uvs,
                         .averageDepth = (v0.z + v1.z + v2.z) / 3.0f,
-                        .solidColor = scene.light.modulateSurfaceColor(triangleColor, normal)
+                        .solidColor = scene.light.modulateSurfaceColor(triangleColor, normal),
+                        .surface = face % 2 == 0 ? brickSurface : cubeSurface
                     };
 
                     trianglesToRender.emplace_back(triangle);
@@ -353,7 +390,7 @@ namespace rasterizer {
             // {x, y} Clip-space -> {x, y} Screen-space
             projected = viewport * projected;
 
-            // Fail safe to avoid division by 0
+            // Fail-safe to avoid division by 0
             if (projected.w == 0.0f) {
                 return projected;
             }

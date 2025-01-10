@@ -26,7 +26,7 @@ namespace rasterizer {
         glm::vec3 scale{1.0f};
         glm::vec3 translation{0.0f};
 
-        size_t facesAmount() const {
+        std::size_t facesAmount() const {
             return faceIndices.size() / 3;
         }
 

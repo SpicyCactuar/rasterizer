@@ -1,4 +1,5 @@
 #pragma once
+#include "common.hpp"
 
 namespace rasterizer {
     struct uv {
@@ -17,16 +18,78 @@ namespace rasterizer {
         }
     };
 
-    struct Texture {
+    // Differentiate Surface from Texture
+    // Surface => CPU --- Texture => GPU
+    struct Surface {
         const std::uint32_t width, height;
-        /*
-         * Intentionally handled in a C-like manner for learning purposes.
-         * The C++ approach I would use is std::array<std::array<std::uint32_t, width>, height>
-         */
-        const std::uint32_t* data;
+        SDL_Surface* surface;
+
+        void lock() const {
+            if (SDL_LockSurface(surface) != EXIT_SUCCESS) {
+                throw std::runtime_error(std::format("Surface could not be locked {}", SDL_GetError()));
+            }
+        }
+
+        void unlock() const {
+            SDL_UnlockSurface(surface);
+        }
+
+        // Assumes surface lock is in correct state, user-managed
+        color_t operator[](const std::size_t index) const {
+            const color_t* pixels = static_cast<color_t*>(surface->pixels);
+            return pixels[index];
+        }
+
+        ~Surface() {
+            if (surface != nullptr) {
+                SDL_FreeSurface(surface);
+                surface = nullptr;
+            }
+        }
     };
 
+    static Surface* loadPngSurface(const std::filesystem::path& path, SDL_Renderer* renderer) {
+        if (!std::filesystem::exists(path) || path.extension() != ".png") {
+            std::print("File does not exist or is not .png: {}", path.string());
+            return nullptr;
+        }
+
+        SDL_Surface* surface = IMG_Load(path.string().c_str());
+        if (surface == nullptr) {
+            std::print("Unable to load png image: {}\n", path.string());
+            std::print("IMG_Load Error: %s\n", IMG_GetError());
+            return nullptr;
+        }
+
+        const std::uint32_t width = surface->w;
+        const std::uint32_t height = surface->h;
+
+        return new Surface{.width = width, .height = height, .surface = surface};
+    }
+
+    static Surface* loadDataSurface(const std::uint32_t* data, const std::uint32_t width, const std::uint32_t height,
+                                    SDL_Renderer* renderer) {
+        // Create an SDL_Surface from the data
+        SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormatFrom(
+            const_cast<std::uint32_t*>(data), // Raw pixel data
+            width, // Image width
+            height, // Image height
+            32, // Bits per pixel
+            width * sizeof(std::uint32_t), // Pitch (row size in bytes)
+            SDL_PIXELFORMAT_RGBA8888 // Pixel format
+        );
+
+        if (surface == nullptr) {
+            std::print("Unable to load data surface");
+            std::print("SDL_Surface Error: %s\n", SDL_GetError());
+            return nullptr;
+        }
+
+        return new Surface{.width = width, .height = height, .surface = texture};
+    }
+
     // Small white patch at the start to identify orientation
+    static constexpr std::uint32_t brickWidth = 64, brickHeight = 64;
     static constexpr std::array<std::uint8_t, 64 * 64 * 4> brickData{
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0x38, 0xff, 0x38, 0x38, 0x38, 0xff, 0x38, 0x38, 0x38, 0xff, 0x38, 0x38, 0x38, 0xff, 0x38, 0x38, 0x38, 0xff,
@@ -988,11 +1051,5 @@ namespace rasterizer {
         0x54, 0x54, 0x54, 0xff, 0x54, 0x54, 0x54, 0xff, 0x54, 0x54, 0x54, 0xff, 0x54, 0x54, 0x54, 0xff, 0x54, 0x54,
         0x54, 0xff, 0x54, 0x54, 0x54, 0xff, 0x54, 0x54, 0x54, 0xff, 0x54, 0x54, 0x54, 0xff, 0x54, 0x54, 0x54, 0xff,
         0x54, 0x54, 0x54, 0xff,
-    };
-
-    static const Texture brick{
-        .width = 64,
-        .height = 64,
-        .data = reinterpret_cast<const std::uint32_t*>(brickData.data())
     };
 }
