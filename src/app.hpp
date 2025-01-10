@@ -61,13 +61,13 @@ namespace rasterizer {
             }
 
             // TODO: Load asset as part of Scene
-            cubeSurface = loadPngSurface("../assets/cube.png", renderer);
+            cubeSurface = loadPngSurface("../assets/cube.png");
             if (cubeSurface == nullptr) {
                 throw std::runtime_error("Failed to load cube surface");
             }
 
             brickSurface = loadDataSurface(reinterpret_cast<const std::uint32_t*>(brickData.data()),
-                                           brickWidth, brickHeight, renderer);
+                                           brickWidth, brickHeight);
             if (brickSurface == nullptr) {
                 throw std::runtime_error("Failed to load brick surface");
             }
@@ -223,6 +223,7 @@ namespace rasterizer {
         static SDL_Texture* createFramebufferTexture(SDL_Renderer* renderer,
                                                      const std::uint32_t width,
                                                      const std::uint32_t height) {
+            // TODO: Use SDL_PIXELFORMAT_RGBA8888
             SDL_Texture* framebufferTexture = SDL_CreateTexture(renderer,
                                                                 SDL_PIXELFORMAT_ARGB8888,
                                                                 SDL_TEXTUREACCESS_STREAMING,

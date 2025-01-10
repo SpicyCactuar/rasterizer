@@ -48,18 +48,30 @@ namespace rasterizer {
         }
     };
 
-    static Surface* loadPngSurface(const std::filesystem::path& path, SDL_Renderer* renderer) {
+    static Surface* loadPngSurface(const std::filesystem::path& path) {
         if (!std::filesystem::exists(path) || path.extension() != ".png") {
             std::print("File does not exist or is not .png: {}", path.string());
             return nullptr;
         }
 
-        SDL_Surface* surface = IMG_Load(path.string().c_str());
-        if (surface == nullptr) {
+        SDL_Surface* rgbaSurface = IMG_Load(path.string().c_str());
+        if (rgbaSurface == nullptr) {
             std::print("Unable to load png image: {}\n", path.string());
             std::print("IMG_Load Error: %s\n", IMG_GetError());
             return nullptr;
         }
+
+        // Enforce ARGB surface
+        SDL_Surface* surface = SDL_ConvertSurfaceFormat(rgbaSurface, SDL_PIXELFORMAT_ARGB8888, 0);
+        if (surface == nullptr) {
+            std::print("Unable to convert RGBA -> ARGB: {}\n", path.string());
+            std::print("SDL_ConvertSurfaceFormat Error: %s\n", SDL_GetError());
+            SDL_FreeSurface(rgbaSurface);
+            return nullptr;
+        }
+
+        // No longer need the original surface
+        SDL_FreeSurface(rgbaSurface);
 
         const std::uint32_t width = surface->w;
         const std::uint32_t height = surface->h;
@@ -67,16 +79,13 @@ namespace rasterizer {
         return new Surface{.width = width, .height = height, .surface = surface};
     }
 
-    static Surface* loadDataSurface(const std::uint32_t* data, const std::uint32_t width, const std::uint32_t height,
-                                    SDL_Renderer* renderer) {
+    static Surface* loadDataSurface(const std::uint32_t* data, const std::uint32_t width, const std::uint32_t height) {
         // Create an SDL_Surface from the data
         SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormatFrom(
-            const_cast<std::uint32_t*>(data), // Raw pixel data
-            width, // Image width
-            height, // Image height
-            32, // Bits per pixel
+            const_cast<std::uint32_t*>(data), width, height,
+            sizeof(std::uint32_t) * 8, // Bits per pixel
             width * sizeof(std::uint32_t), // Pitch (row size in bytes)
-            SDL_PIXELFORMAT_RGBA8888 // Pixel format
+            SDL_PIXELFORMAT_ARGB8888 // Pixel format
         );
 
         if (surface == nullptr) {
@@ -85,7 +94,7 @@ namespace rasterizer {
             return nullptr;
         }
 
-        return new Surface{.width = width, .height = height, .surface = texture};
+        return new Surface{.width = width, .height = height, .surface = surface};
     }
 
     // Small white patch at the start to identify orientation
