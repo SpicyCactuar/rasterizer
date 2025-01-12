@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include <SDL2/SDL_image.h>
 
 #include "common.hpp"
@@ -25,29 +27,22 @@ namespace rasterizer {
     // Surface => CPU --- Texture => GPU
     struct Surface {
         const std::uint32_t width, height;
-        SDL_Surface* surface;
+        const std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)> surface;
 
         void lock() const {
-            if (SDL_LockSurface(surface) != EXIT_SUCCESS) {
+            if (SDL_LockSurface(surface.get()) != EXIT_SUCCESS) {
                 throw std::runtime_error(std::format("Surface could not be locked {}", SDL_GetError()));
             }
         }
 
         void unlock() const {
-            SDL_UnlockSurface(surface);
+            SDL_UnlockSurface(surface.get());
         }
 
         // Assumes surface lock is in correct state, user-managed
         color_t operator[](const std::size_t index) const {
             const color_t* pixels = static_cast<color_t*>(surface->pixels);
             return pixels[index];
-        }
-
-        ~Surface() {
-            if (surface != nullptr) {
-                SDL_FreeSurface(surface);
-                surface = nullptr;
-            }
         }
     };
 
@@ -79,7 +74,10 @@ namespace rasterizer {
         const std::uint32_t width = surface->w;
         const std::uint32_t height = surface->h;
 
-        return new Surface{.width = width, .height = height, .surface = surface};
+        return new Surface{
+            .width = width, .height = height,
+            .surface = std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)>(surface, SDL_FreeSurface)
+        };
     }
 
     static Surface* loadDataSurface(const std::uint32_t* data, const std::uint32_t width, const std::uint32_t height) {
@@ -109,7 +107,10 @@ namespace rasterizer {
         // No longer need the original surface
         SDL_FreeSurface(originalSurface);
 
-        return new Surface{.width = width, .height = height, .surface = surface};
+        return new Surface{
+            .width = width, .height = height,
+            .surface = std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)>(surface, SDL_FreeSurface)
+        };
     }
 
     // Small white patch at the start to identify orientation

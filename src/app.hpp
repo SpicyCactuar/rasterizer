@@ -193,7 +193,6 @@ namespace rasterizer {
                     const color_t b = colorSeed & 0x0000FF00; // 0x0000BB00
                     const color_t triangleColor = r | g | b | a;
 
-                    // Draw the centered triangles of the mesh
                     const auto triangle = Triangle{
                         .vertices = {
                             // Map from clip space to screen space
