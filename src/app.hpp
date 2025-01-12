@@ -60,32 +60,12 @@ namespace rasterizer {
                 throw std::runtime_error("Failed to initialize framebuffer texture");
             }
 
-            // TODO: Load asset as part of Scene
-            cubeSurface = loadPngSurface("../assets/cube.png");
-            if (cubeSurface == nullptr) {
-                throw std::runtime_error("Failed to load cube surface");
-            }
-
-            brickSurface = loadDataSurface(reinterpret_cast<const std::uint32_t*>(brickData.data()),
-                                           brickWidth, brickHeight);
-            if (brickSurface == nullptr) {
-                throw std::runtime_error("Failed to load brick surface");
-            }
-
             isRunning = true;
         }
 
         ~Application() {
             isRunning = false;
 
-            if (cubeSurface != nullptr) {
-                delete cubeSurface;
-                cubeSurface = nullptr;
-            }
-            if (brickSurface != nullptr) {
-                delete brickSurface;
-                brickSurface = nullptr;
-            }
             if (framebufferTexture != nullptr) {
                 SDL_DestroyTexture(framebufferTexture);
                 framebufferTexture = nullptr;
@@ -157,9 +137,6 @@ namespace rasterizer {
         Frustum* frustum;
 
         bool backFaceCulling = true;
-
-        Surface* cubeSurface = nullptr;
-        Surface* brickSurface = nullptr;
 
         static bool initializeSDL() {
             if (SDL_Init(SDL_INIT_EVERYTHING) != EXIT_SUCCESS) {
@@ -298,13 +275,11 @@ namespace rasterizer {
                           return trianglesToRender[t1].averageDepth > trianglesToRender[t2].averageDepth;
                       });
 
-            cubeSurface->lock();
-            brickSurface->lock();
+            scene.lock();
             for (const auto ti : indicesByDepth) {
                 canvas->drawTriangle(trianglesToRender[ti]);
             }
-            cubeSurface->unlock();
-            brickSurface->unlock();
+            scene.unlock();
         }
 
         std::vector<Triangle> computeTrianglesToRender() const {
@@ -366,7 +341,7 @@ namespace rasterizer {
                         .uvs = mesh[face].uvs,
                         .averageDepth = (v0.z + v1.z + v2.z) / 3.0f,
                         .solidColor = scene.light.modulateSurfaceColor(triangleColor, normal),
-                        .surface = face % 2 == 0 ? cubeSurface : brickSurface
+                        .surface = face % 2 == 0 ? scene.cubeSurface : scene.brickSurface
                     };
 
                     trianglesToRender.emplace_back(triangle);
