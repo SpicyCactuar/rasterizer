@@ -4,17 +4,13 @@
 #include <SDL2/SDL.h>
 
 #include "app.hpp"
-#include "scene.hpp"
-#include "obj.hpp"
 
 int main(int argc, char* argv[]) try {
     static constexpr std::string_view title = "Hello Rasterizer";
     static constexpr std::uint32_t FPS = 120;
     static constexpr std::uint32_t FRAME_TIME = 1000 / FPS;
 
-    const rasterizer::Mesh cube = rasterizer::parseObj("../assets/cube.obj");
-    rasterizer::Scene scene({cube});
-    rasterizer::Application app(title, scene);
+    rasterizer::Application app(title);
 
     while (app.isRunning) {
         const std::uint64_t frameStart = SDL_GetTicks64();

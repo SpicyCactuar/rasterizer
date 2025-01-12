@@ -15,7 +15,7 @@ namespace rasterizer {
         Surface* cubeSurface = nullptr;
         Surface* brickSurface = nullptr;
 
-        Scene(std::vector<Mesh> meshes) : meshes(std::move(meshes)) {
+        explicit Scene(std::vector<Mesh> meshes) : meshes(std::move(meshes)) {
             cubeSurface = loadPngSurface("../assets/cube.png");
             if (cubeSurface == nullptr) {
                 throw std::runtime_error("Failed to load cube surface");
@@ -34,8 +34,8 @@ namespace rasterizer {
         }
 
         void unlock() const {
-            brickSurface->unlock();
             cubeSurface->unlock();
+            brickSurface->unlock();
         }
 
         ~Scene() {

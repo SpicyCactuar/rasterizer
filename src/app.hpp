@@ -17,6 +17,7 @@
 #include "scene.hpp"
 #include "canvas.hpp"
 #include "frustum.hpp"
+#include "obj.hpp"
 
 namespace rasterizer {
     static constexpr std::uint32_t defaultWindowWidth = 1600;
@@ -26,7 +27,7 @@ namespace rasterizer {
     public:
         bool isRunning = false;
 
-        explicit Application(const std::string_view& title, Scene& scene) : scene(scene) {
+        explicit Application(const std::string_view& title) : scene({rasterizer::parseObj("../assets/cube.obj")}) {
             if (!initializeSDL()) {
                 throw std::runtime_error("Failed to initialize SDL");
             }
@@ -107,7 +108,7 @@ namespace rasterizer {
             }
         }
 
-        void update() const {
+        void update() {
             for (Mesh& mesh : scene.meshes) {
                 mesh.eulerRotation += glm::vec3{0.0f, 0.01f, 0.0f};
                 // Put object in front of camera
@@ -124,7 +125,7 @@ namespace rasterizer {
         }
 
     private:
-        Scene& scene;
+        Scene scene;
 
         // TODO: Initialize in Window object to avoid having these fields as pointers
         // TODO: Use smart pointers
@@ -146,7 +147,7 @@ namespace rasterizer {
 
             // IMG_Init returns a bit mask
             if ((IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) != IMG_INIT_PNG) {
-                printf("IMG_Init Error: %s\n", IMG_GetError());
+                std::print("IMG_Init Error: %s\n", IMG_GetError());
                 return false;
             }
 
