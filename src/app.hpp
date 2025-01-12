@@ -223,9 +223,8 @@ namespace rasterizer {
         static SDL_Texture* createFramebufferTexture(SDL_Renderer* renderer,
                                                      const std::uint32_t width,
                                                      const std::uint32_t height) {
-            // TODO: Use SDL_PIXELFORMAT_RGBA8888
             SDL_Texture* framebufferTexture = SDL_CreateTexture(renderer,
-                                                                SDL_PIXELFORMAT_ARGB8888,
+                                                                SDL_PIXELFORMAT_RGBA8888,
                                                                 SDL_TEXTUREACCESS_STREAMING,
                                                                 static_cast<std::int32_t>(width),
                                                                 static_cast<std::int32_t>(height));
@@ -349,12 +348,12 @@ namespace rasterizer {
                     }
 
                     // Compute synthetic color from face index
-                    const std::uint32_t colorSeed = face * 2654435761u;
-                    constexpr color_t a = 0xFF000000;
-                    const color_t r = colorSeed & 0x00FF0000; // 0x00RR0000
-                    const color_t g = colorSeed & 0x0000FF00; // 0x0000GG00
-                    const color_t b = colorSeed & 0x000000FF; // 0x000000BB
-                    const color_t triangleColor = a | r | g | b;
+                    const color_t colorSeed = face * 2654435761u;
+                    constexpr color_t a = 0x000000FF;
+                    const color_t r = colorSeed & 0xFF000000; // 0xRR000000
+                    const color_t g = colorSeed & 0x00FF0000; // 0x00GG0000
+                    const color_t b = colorSeed & 0x0000FF00; // 0x0000BB00
+                    const color_t triangleColor = r | g | b | a;
 
                     // Draw the centered triangles of the mesh
                     const auto triangle = Triangle{
@@ -367,7 +366,7 @@ namespace rasterizer {
                         .uvs = mesh[face].uvs,
                         .averageDepth = (v0.z + v1.z + v2.z) / 3.0f,
                         .solidColor = scene.light.modulateSurfaceColor(triangleColor, normal),
-                        .surface = face % 2 == 0 ? brickSurface : cubeSurface
+                        .surface = face % 2 == 0 ? cubeSurface : brickSurface
                     };
 
                     trianglesToRender.emplace_back(triangle);

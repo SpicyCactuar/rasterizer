@@ -18,7 +18,7 @@ namespace rasterizer {
         TEXTURE = 1 << 1,
     };
 
-    static constexpr color_t defaultTriangleFillColor = 0xFF4C1D95;
+    static constexpr color_t defaultTriangleFillColor = 0x4C1D95FF;
 
     struct Triangle {
         const std::array<glm::vec4, 3> vertices;
@@ -139,8 +139,8 @@ namespace rasterizer {
             const auto [v0, v1, v2] = triangle.vertices;
             const auto [p0, p1, p2] = std::make_tuple(glm::vec2{v0}, glm::vec2{v1}, glm::vec2{v2});
             const auto& [uv0, uv1, uv2] = triangle.uvs;
-            static constexpr color_t triangleLineColor = 0xFFA78BFA;
-            static constexpr color_t trianglePointColor = 0xFF7C3AED;
+            static constexpr color_t triangleLineColor = 0xA78BFAFF;
+            static constexpr color_t trianglePointColor = 0x7C3AEDFF;
 
             const bool drawTriangleFill = polygonModeMask & static_cast<std::uint32_t>(PolygonMode::FILL);
             const bool drawTriangleLines = polygonModeMask & static_cast<std::uint32_t>(PolygonMode::LINE);
@@ -170,7 +170,7 @@ namespace rasterizer {
         }
 
         void drawGrid() const {
-            static constexpr std::uint32_t gridColor = 0xFF7C3AED;
+            static constexpr std::uint32_t gridColor = 0x7C3AEDFF;
 
             for (std::uint32_t row = 0; row < height; row += 10) {
                 for (std::uint32_t column = 0; column < width; column += 10) {
@@ -181,7 +181,7 @@ namespace rasterizer {
 
         void clear() const {
             // Clear framebuffer contents
-            static constexpr std::uint32_t clearColor = 0xFF2E1065;
+            static constexpr std::uint32_t clearColor = 0x2E1065FF;
 
             for (std::uint32_t row = 0; row < height; ++row) {
                 for (std::uint32_t column = 0; column < width; ++column) {

@@ -54,24 +54,24 @@ namespace rasterizer {
             return nullptr;
         }
 
-        SDL_Surface* rgbaSurface = IMG_Load(path.string().c_str());
-        if (rgbaSurface == nullptr) {
+        SDL_Surface* originalSurface = IMG_Load(path.string().c_str());
+        if (originalSurface == nullptr) {
             std::print("Unable to load png image: {}\n", path.string());
             std::print("IMG_Load Error: %s\n", IMG_GetError());
             return nullptr;
         }
 
-        // Enforce ARGB surface
-        SDL_Surface* surface = SDL_ConvertSurfaceFormat(rgbaSurface, SDL_PIXELFORMAT_ARGB8888, 0);
+        // Enforce app format surface
+        SDL_Surface* surface = SDL_ConvertSurfaceFormat(originalSurface, rasterizer::colorFormat, 0);
         if (surface == nullptr) {
-            std::print("Unable to convert RGBA -> ARGB: {}\n", path.string());
+            std::print("Unable to convert png to RGBA: {}\n", path.string());
             std::print("SDL_ConvertSurfaceFormat Error: %s\n", SDL_GetError());
-            SDL_FreeSurface(rgbaSurface);
+            SDL_FreeSurface(originalSurface);
             return nullptr;
         }
 
         // No longer need the original surface
-        SDL_FreeSurface(rgbaSurface);
+        SDL_FreeSurface(originalSurface);
 
         const std::uint32_t width = surface->w;
         const std::uint32_t height = surface->h;
@@ -81,18 +81,30 @@ namespace rasterizer {
 
     static Surface* loadDataSurface(const std::uint32_t* data, const std::uint32_t width, const std::uint32_t height) {
         // Create an SDL_Surface from the data
-        SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormatFrom(
+        SDL_Surface* originalSurface = SDL_CreateRGBSurfaceWithFormatFrom(
             const_cast<std::uint32_t*>(data), width, height,
             sizeof(std::uint32_t) * 8, // Bits per pixel
             width * sizeof(std::uint32_t), // Pitch (row size in bytes)
             SDL_PIXELFORMAT_ARGB8888 // Pixel format
         );
 
-        if (surface == nullptr) {
+        if (originalSurface == nullptr) {
             std::print("Unable to load data surface");
             std::print("SDL_Surface Error: %s\n", SDL_GetError());
             return nullptr;
         }
+
+        // Enforce app format surface
+        SDL_Surface* surface = SDL_ConvertSurfaceFormat(originalSurface, rasterizer::colorFormat, 0);
+        if (surface == nullptr) {
+            std::print("Unable to convert data to RGBA\n");
+            std::print("SDL_ConvertSurfaceFormat Error: %s\n", SDL_GetError());
+            SDL_FreeSurface(originalSurface);
+            return nullptr;
+        }
+
+        // No longer need the original surface
+        SDL_FreeSurface(originalSurface);
 
         return new Surface{.width = width, .height = height, .surface = surface};
     }
