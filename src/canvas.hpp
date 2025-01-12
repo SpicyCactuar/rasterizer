@@ -48,7 +48,7 @@ namespace rasterizer {
             }
         }
 
-        explicit operator const std::uint32_t*() const {
+        explicit operator const color_t*() const {
             return buffer;
         }
 
@@ -170,7 +170,7 @@ namespace rasterizer {
         }
 
         void drawGrid() const {
-            static constexpr std::uint32_t gridColor = 0x7C3AEDFF;
+            static constexpr color_t gridColor = 0x7C3AEDFF;
 
             for (std::uint32_t row = 0; row < height; row += 10) {
                 for (std::uint32_t column = 0; column < width; column += 10) {
@@ -181,7 +181,7 @@ namespace rasterizer {
 
         void clear() const {
             // Clear framebuffer contents
-            static constexpr std::uint32_t clearColor = 0x2E1065FF;
+            static constexpr color_t clearColor = 0x2E1065FF;
 
             for (std::uint32_t row = 0; row < height; ++row) {
                 for (std::uint32_t column = 0; column < width; ++column) {
@@ -205,15 +205,16 @@ namespace rasterizer {
     private:
         /*
          * Intentionally handled in a C-like manner for learning purposes.
-         * The C++ approach I would use is std::array<std::array<std::uint32_t, width>, height>
+         * The C++ approach I would use is boost::static_vector<color_t>
+         * Cannot use std::array as size is not known at compile time
          */
-        std::uint32_t* buffer = nullptr;
+        color_t* buffer = nullptr;
 
         std::uint32_t polygonModeMask = static_cast<std::uint32_t>(PolygonMode::LINE);
         std::uint32_t fillModeMask = static_cast<std::uint32_t>(FillMode::SOLID);
 
-        static std::uint32_t* createFramebuffer(const std::uint32_t width, const std::uint32_t height) {
-            return static_cast<std::uint32_t*>(std::calloc(width * height, sizeof(std::uint32_t)));
+        static color_t* createFramebuffer(const std::uint32_t width, const std::uint32_t height) {
+            return static_cast<color_t*>(std::calloc(width * height, sizeof(color_t)));
         }
 
         ///////////////////////////////////////////////////////////////////////////////

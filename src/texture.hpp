@@ -1,4 +1,7 @@
 #pragma once
+
+#include <SDL2/SDL_image.h>
+
 #include "common.hpp"
 
 namespace rasterizer {

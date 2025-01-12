@@ -1,95 +1,39 @@
 #pragma once
 
 #include <algorithm>
-#include <cstdint>
-#include <iostream>
 #include <numeric>
 #include <numbers>
-#include <print>
-#include <stdexcept>
 #include <filesystem>
 
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_render.h>
-#include <SDL2/SDL_image.h>
 
-#include "mesh.hpp"
 #include "scene.hpp"
-#include "canvas.hpp"
-#include "frustum.hpp"
 #include "obj.hpp"
+#include "frustum.hpp"
+#include "canvas.hpp"
+#include "context.hpp"
+#include "mesh.hpp"
 
 namespace rasterizer {
-    static constexpr std::uint32_t defaultWindowWidth = 1600;
-    static constexpr std::uint32_t defaultWindowHeight = 1075;
-
     class Application {
     public:
         bool isRunning = false;
 
-        explicit Application(const std::string_view& title) : scene({rasterizer::parseObj("../assets/cube.obj")}) {
-            if (!initializeSDL()) {
-                throw std::runtime_error("Failed to initialize SDL");
-            }
-
-            window = createWindow(title, defaultWindowWidth, defaultWindowHeight);
-            if (window == nullptr) {
-                throw std::runtime_error("Failed to create window");
-            }
-
-            renderer = createRenderer(window);
-            if (renderer == nullptr) {
-                throw std::runtime_error("Failed to initialize renderer");
-            }
-
-            std::int32_t windowWidth, windowHeight;
-            SDL_GetWindowSize(window, &windowWidth, &windowHeight);
-
-            const auto framebufferWidth = static_cast<std::uint32_t>(windowWidth);
-            const auto framebufferHeight = static_cast<std::uint32_t>(windowHeight);
-
-            std::print("Display size: {} x {}\n", framebufferWidth, framebufferHeight);
-            frustum = new Frustum(
-                static_cast<glm::float32_t>(framebufferHeight) / static_cast<glm::float32_t>(framebufferWidth),
-                std::numbers::pi / 3.0f, // 60 degrees
-                0.01f, 100.0f
-            );
-            canvas = new Canvas(framebufferWidth, framebufferHeight);
-
-            framebufferTexture = createFramebufferTexture(renderer, framebufferWidth, framebufferHeight);
-            if (framebufferTexture == nullptr) {
-                throw std::runtime_error("Failed to initialize framebuffer texture");
-            }
-
+        explicit Application(const std::string_view& title)
+            : scene({rasterizer::parseObj("../assets/cube.obj")}),
+              context(title),
+              canvas(context.framebufferWidth, context.framebufferHeight),
+              frustum(
+                  static_cast<glm::float32_t>(canvas.height) /
+                  static_cast<glm::float32_t>(canvas.width),
+                  std::numbers::pi / 3.0f, // 60 degrees
+                  0.01f, 100.0f
+              ) {
             isRunning = true;
         }
 
         ~Application() {
             isRunning = false;
-
-            if (framebufferTexture != nullptr) {
-                SDL_DestroyTexture(framebufferTexture);
-                framebufferTexture = nullptr;
-            }
-            if (canvas != nullptr) {
-                delete canvas;
-                canvas = nullptr;
-            }
-            if (frustum != nullptr) {
-                delete frustum;
-                frustum = nullptr;
-            }
-
-            if (renderer != nullptr) {
-                SDL_DestroyRenderer(renderer);
-                renderer = nullptr;
-            }
-            if (window != nullptr) {
-                SDL_DestroyWindow(window);
-                window = nullptr;
-            }
-            IMG_Quit();
-            SDL_Quit();
         }
 
         void processInput() {
@@ -117,103 +61,21 @@ namespace rasterizer {
         }
 
         void render() const {
-            clearFramebuffer();
-            canvas->drawGrid();
+            context.clear();
+            canvas.clear();
+            canvas.drawGrid();
             drawScene();
-            renderFramebufferTexture();
-            SDL_RenderPresent(renderer);
+            context.render(canvas);
+            context.present();
         }
 
     private:
         Scene scene;
-
-        // TODO: Initialize in Window object to avoid having these fields as pointers
-        // TODO: Use smart pointers
-        SDL_Window* window = nullptr;
-        SDL_Renderer* renderer = nullptr;
-
-        Canvas* canvas = nullptr;
-        SDL_Texture* framebufferTexture = nullptr;
-
-        Frustum* frustum;
+        RenderContext context;
+        Canvas canvas;
+        Frustum frustum;
 
         bool backFaceCulling = true;
-
-        static bool initializeSDL() {
-            if (SDL_Init(SDL_INIT_EVERYTHING) != EXIT_SUCCESS) {
-                std::print("SDL_Init Error: %s\n", SDL_GetError());
-                return false;
-            }
-
-            // IMG_Init returns a bit mask
-            if ((IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) != IMG_INIT_PNG) {
-                std::print("IMG_Init Error: %s\n", IMG_GetError());
-                return false;
-            }
-
-            SDL_version compiled, linked;
-            SDL_VERSION(&compiled);
-            SDL_GetVersion(&linked);
-
-            std::print("Compiled against SDL version: {}.{}.{}\n",
-                       compiled.major, compiled.minor, compiled.patch);
-            std::print("Linked SDL version: {}.{}.{}\n",
-                       linked.major, linked.minor, linked.patch);
-
-            return true;
-        }
-
-        static SDL_Window* createWindow(const std::string_view& title,
-                                        const std::uint32_t width,
-                                        const std::uint32_t height) {
-            SDL_DisplayMode displayMode;
-            const auto displayModeQuery = SDL_GetCurrentDisplayMode(0, &displayMode);
-            const bool fullscreen = displayModeQuery == EXIT_SUCCESS;
-
-            const std::uint32_t windowWidth = fullscreen && displayMode.w > 0 ? displayMode.w : width;
-            const std::uint32_t windowHeight = fullscreen && displayMode.h > 0 ? displayMode.h : height;
-
-            SDL_Window* window = SDL_CreateWindow(title.data(),
-                                                  SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                                  static_cast<std::int32_t>(windowWidth),
-                                                  static_cast<std::int32_t>(windowHeight),
-                                                  SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALLOW_HIGHDPI);
-
-            if (window == nullptr) {
-                std::print(std::cerr, "SDL_CreateWindow Error: {}\n", SDL_GetError());
-                return nullptr;
-            }
-
-            return window;
-        }
-
-        static SDL_Renderer* createRenderer(SDL_Window* window) {
-            SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
-
-            if (renderer == nullptr) {
-                std::print(std::cerr, "SDL_CreateRenderer Error: {}\n", SDL_GetError());
-                return nullptr;
-            }
-
-            return renderer;
-        }
-
-        static SDL_Texture* createFramebufferTexture(SDL_Renderer* renderer,
-                                                     const std::uint32_t width,
-                                                     const std::uint32_t height) {
-            SDL_Texture* framebufferTexture = SDL_CreateTexture(renderer,
-                                                                SDL_PIXELFORMAT_RGBA8888,
-                                                                SDL_TEXTUREACCESS_STREAMING,
-                                                                static_cast<std::int32_t>(width),
-                                                                static_cast<std::int32_t>(height));
-
-            if (framebufferTexture == nullptr) {
-                std::print(std::cerr, "SDL_CreateTexture Error: {}\n", SDL_GetError());
-                return nullptr;
-            }
-
-            return framebufferTexture;
-        }
 
         void processKeypress(const SDL_Keycode keycode) {
             switch (keycode) {
@@ -221,38 +83,38 @@ namespace rasterizer {
                     isRunning = false;
                     break;
                 case SDLK_1:
-                    canvas->disable(PolygonMode::FILL);
-                    canvas->enable(PolygonMode::LINE);
-                    canvas->enable(PolygonMode::POINT);
+                    canvas.disable(PolygonMode::FILL);
+                    canvas.enable(PolygonMode::LINE);
+                    canvas.enable(PolygonMode::POINT);
                     break;
                 case SDLK_2:
-                    canvas->disable(PolygonMode::FILL);
-                    canvas->enable(PolygonMode::LINE);
-                    canvas->disable(PolygonMode::POINT);
+                    canvas.disable(PolygonMode::FILL);
+                    canvas.enable(PolygonMode::LINE);
+                    canvas.disable(PolygonMode::POINT);
                     break;
                 case SDLK_3:
-                    canvas->enable(PolygonMode::FILL);
-                    canvas->disable(PolygonMode::LINE);
-                    canvas->disable(PolygonMode::POINT);
-                    canvas->set(FillMode::SOLID);
+                    canvas.enable(PolygonMode::FILL);
+                    canvas.disable(PolygonMode::LINE);
+                    canvas.disable(PolygonMode::POINT);
+                    canvas.set(FillMode::SOLID);
                     break;
                 case SDLK_4:
-                    canvas->enable(PolygonMode::FILL);
-                    canvas->enable(PolygonMode::LINE);
-                    canvas->disable(PolygonMode::POINT);
-                    canvas->set(FillMode::SOLID);
+                    canvas.enable(PolygonMode::FILL);
+                    canvas.enable(PolygonMode::LINE);
+                    canvas.disable(PolygonMode::POINT);
+                    canvas.set(FillMode::SOLID);
                     break;
                 case SDLK_5:
-                    canvas->enable(PolygonMode::FILL);
-                    canvas->enable(PolygonMode::LINE);
-                    canvas->disable(PolygonMode::POINT);
-                    canvas->set(FillMode::TEXTURE);
+                    canvas.enable(PolygonMode::FILL);
+                    canvas.enable(PolygonMode::LINE);
+                    canvas.disable(PolygonMode::POINT);
+                    canvas.set(FillMode::TEXTURE);
                     break;
                 case SDLK_6:
-                    canvas->enable(PolygonMode::FILL);
-                    canvas->disable(PolygonMode::LINE);
-                    canvas->disable(PolygonMode::POINT);
-                    canvas->set(FillMode::TEXTURE);
+                    canvas.enable(PolygonMode::FILL);
+                    canvas.disable(PolygonMode::LINE);
+                    canvas.disable(PolygonMode::POINT);
+                    canvas.set(FillMode::TEXTURE);
                     break;
                 case SDLK_c:
                     backFaceCulling = true;
@@ -278,7 +140,7 @@ namespace rasterizer {
 
             scene.lock();
             for (const auto ti : indicesByDepth) {
-                canvas->drawTriangle(trianglesToRender[ti]);
+                canvas.drawTriangle(trianglesToRender[ti]);
             }
             scene.unlock();
         }
@@ -287,12 +149,12 @@ namespace rasterizer {
             std::vector<Triangle> trianglesToRender;
             trianglesToRender.reserve(scene.meshes.size());
 
-            const auto projection = frustum->perspectiveProjection();
+            const auto projection = frustum.perspectiveProjection();
             const auto viewport = glm::mat4{
-                canvas->width / 2.0f, 0.0f, 0.0f, 0.0f,
-                0.0f, canvas->height / 2.0f, 0.0f, 0.0f,
+                canvas.width / 2.0f, 0.0f, 0.0f, 0.0f,
+                0.0f, canvas.height / 2.0f, 0.0f, 0.0f,
                 0.0f, 0.0f, 1.0f, 0.0f,
-                canvas->width / 2.0f, canvas->height / 2.0f, 0.0f, 1.0f
+                canvas.width / 2.0f, canvas.height / 2.0f, 0.0f, 1.0f
             };
 
             for (auto& mesh : scene.meshes) {
@@ -315,7 +177,7 @@ namespace rasterizer {
 
                     // Cull if necessary
                     if (backFaceCulling) {
-                        const auto triangleToCamera = glm::normalize(frustum->position - glm::vec3(v0));
+                        const auto triangleToCamera = glm::normalize(frustum.position - glm::vec3(v0));
 
                         // Cull if triangle normal and triangleToCamera are not pointing in the same direction
                         if (glm::dot(normal, triangleToCamera) < 0.0f) {
@@ -376,26 +238,6 @@ namespace rasterizer {
             projected.y /= projected.w;
             projected.z /= projected.w;
             return projected;
-        }
-
-        void clearFramebuffer() const {
-            // Clear renderer
-            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-            SDL_RenderClear(renderer);
-
-            // Clear Canvas
-            canvas->clear();
-        }
-
-        void renderFramebufferTexture() const {
-            const auto update = SDL_UpdateTexture(framebufferTexture, nullptr,
-                                                  static_cast<const std::uint32_t*>(*canvas),
-                                                  static_cast<int>(sizeof(std::uint32_t) * canvas->width));
-            const auto renderCopy = SDL_RenderCopy(renderer, framebufferTexture, nullptr, nullptr);
-
-            if (update != EXIT_SUCCESS || renderCopy != EXIT_SUCCESS) {
-                throw std::runtime_error("Failed to render framebuffer texture");
-            }
         }
     };
 }
