@@ -51,7 +51,7 @@ namespace rasterizer {
         }
 
         std::vector<glm::vec3> vertices;
-        std::vector<rasterizer::uv> uvs;
+        std::vector<glm::vec2> uvs;
         std::vector<std::uint32_t> faceIndices;
         std::vector<std::uint32_t> uvIndices;
 

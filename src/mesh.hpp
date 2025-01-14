@@ -9,7 +9,7 @@
 namespace rasterizer {
     struct TriangleFace {
         const std::array<glm::vec3, 3> vertices;
-        const std::array<rasterizer::uv, 3> uvs;
+        const std::array<glm::vec2, 3> uvs;
     };
 
     /*
@@ -19,7 +19,7 @@ namespace rasterizer {
      */
     struct Mesh {
         const std::vector<glm::vec3> vertices;
-        const std::vector<rasterizer::uv> uvs;
+        const std::vector<glm::vec2> uvs;
         const std::vector<std::uint32_t> faceIndices;
         const std::vector<std::uint32_t> uvIndices;
         glm::vec3 eulerRotation{0.0f};

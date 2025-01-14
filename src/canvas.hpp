@@ -22,7 +22,7 @@ namespace rasterizer {
 
     struct Triangle {
         const std::array<glm::vec4, 3> vertices;
-        const std::array<rasterizer::uv, 3> uvs;
+        const std::array<glm::vec2, 3> uvs;
         const glm::float32_t averageDepth;
         const color_t solidColor = defaultTriangleFillColor;
         const Surface* surface = nullptr;
@@ -61,7 +61,7 @@ namespace rasterizer {
         void drawTexel(const std::int32_t row, const std::int32_t column,
                        const glm::vec4& v0, const glm::vec4& v1, const glm::vec4& v2,
                        const glm::ivec2& p0, const glm::ivec2& p1, const glm::ivec2& p2,
-                       const rasterizer::uv& uv0, const rasterizer::uv& uv1, const rasterizer::uv& uv2,
+                       const glm::vec2& uv0, const glm::vec2& uv1, const glm::vec2& uv2,
                        const Surface* surface) const {
             const auto barycentric = barycentricWeights(p0, p1, p2, {column, row});
 
@@ -74,13 +74,13 @@ namespace rasterizer {
 
             // v.w holds the depth information but does not interpolate linearly, (1 / v.w) does
             // Interpolate linearly and undo division at the end
-            const glm::float32_t uInterpolated = (barycentric.x * (uv0.value.x / v0.w) +
-                                                  barycentric.y * (uv1.value.x / v1.w) +
-                                                  barycentric.z * (uv2.value.x / v2.w)) / wReciprocalInterpolated;
+            const glm::float32_t uInterpolated = (barycentric.x * (uv0.x / v0.w) +
+                                                  barycentric.y * (uv1.x / v1.w) +
+                                                  barycentric.z * (uv2.x / v2.w)) / wReciprocalInterpolated;
 
-            const glm::float32_t vInterpolated = (barycentric.x * (uv0.value.y / v0.w) +
-                                                  barycentric.y * (uv1.value.y / v1.w) +
-                                                  barycentric.z * (uv2.value.y / v2.w)) / wReciprocalInterpolated;
+            const glm::float32_t vInterpolated = (barycentric.x * (uv0.y / v0.w) +
+                                                  barycentric.y * (uv1.y / v1.w) +
+                                                  barycentric.z * (uv2.y / v2.w)) / wReciprocalInterpolated;
 
             // Map the UV coordinate to the range [0..{texture.width,texture.height} - 1]
             // Apply modulo to account for degenerate point-outside-triangle barycentric case
@@ -138,9 +138,10 @@ namespace rasterizer {
             // Convention: 3 or 4 dimension vertices -> vN, 2 dimension points pN
             const auto [v0, v1, v2] = triangle.vertices;
             const auto [p0, p1, p2] = std::make_tuple(glm::vec2{v0}, glm::vec2{v1}, glm::vec2{v2});
+            // Mirror V coordinate along downward Y axis, effectively flipping the texture
             const auto& [uv0, uv1, uv2] = std::apply(
                 [](const auto&... uvs) {
-                    return std::make_tuple(rasterizer::uv{uvs.value.x, 1.0f - uvs.value.y}...);
+                    return std::make_tuple(glm::vec2{uvs.x, 1.0f - uvs.y}...);
                 },
                 triangle.uvs
             );
@@ -336,7 +337,7 @@ namespace rasterizer {
 
         void drawTexturedTriangle(glm::vec4 v0, glm::vec4 v1, glm::vec4 v2,
                                   glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2,
-                                  rasterizer::uv uv0, rasterizer::uv uv1, rasterizer::uv uv2,
+                                  glm::vec2 uv0, glm::vec2 uv1, glm::vec2 uv2,
                                   const Surface* surface) const {
             sortAscendingVertically(v0, v1, v2, p0, p1, p2, uv0, uv1, uv2);
 
@@ -410,7 +411,7 @@ namespace rasterizer {
 
         static void sortAscendingVertically(glm::vec4& v0, glm::vec4& v1, glm::vec4& v2,
                                             glm::ivec2& p0, glm::ivec2& p1, glm::ivec2& p2,
-                                            rasterizer::uv& uv0, rasterizer::uv& uv1, rasterizer::uv& uv2) {
+                                            glm::vec2& uv0, glm::vec2& uv1, glm::vec2& uv2) {
             // Sort such that p0.y <= p1.y <= p2.y
             // Swap vertices and uvs accordingly
             if (p1.y < p0.y) {
