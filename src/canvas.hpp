@@ -82,12 +82,12 @@ namespace rasterizer {
                                                   barycentric.y * (uv1.value.y / v1.w) +
                                                   barycentric.z * (uv2.value.y / v2.w)) / wReciprocalInterpolated;
 
-            // Map the UV coordinate to the full texture width and height
-            // Account for indexing, therefore we subtract 1 to the extents
-            const std::size_t xTex = std::abs(
-                static_cast<std::int32_t>(uInterpolated * (static_cast<std::int32_t>(surface->width) - 1)));
-            const std::size_t yTex = std::abs(
-                static_cast<std::int32_t>(vInterpolated * (static_cast<std::int32_t>(surface->height) - 1)));
+            // Map the UV coordinate to the range [0..{texture.width,texture.height} - 1]
+            // Apply modulo to account for degenerate point-outside-triangle barycentric case
+            const std::size_t xTex = static_cast<std::size_t>(
+                                         std::abs(uInterpolated * (surface->width - 1))) % surface->width;
+            const std::size_t yTex = static_cast<std::size_t>(
+                                         std::abs(vInterpolated * (surface->height - 1))) % surface->height;
 
             drawPixel(row, column, (*surface)[yTex * surface->width + xTex]);
         }
@@ -449,8 +449,13 @@ namespace rasterizer {
         //
         // Based on diagram by: Pikuma (Gustavo Pezzi)
         //
+        // Points are fed in as integers but barycentric are computed using floats.
+        // Therefore, the vertices can get rounded _outside_ of the triangle.
+        // This can break the condition 0 <= α, β, γ <= 1 && α + β + γ = 1.
+        // Users must guard against this.
+        //
+        // TODO: Use a floating-point raster algorithm
         ///////////////////////////////////////////////////////////////////////////////
-        // TODO: Make robust by enforcing values within [0..1] and sum to 1
         static glm::vec3 barycentricWeights(const glm::ivec2& a, const glm::ivec2& b, const glm::ivec2& c,
                                             const glm::ivec2& p) {
             const auto ac = c - a;
