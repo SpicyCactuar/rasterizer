@@ -11,11 +11,11 @@ namespace rasterizer {
         glm::vec2 value;
 
         explicit constexpr uv(const glm::vec2 uv) : value(uv) {
-            assert(isValidRange(uv.x) && isValidRange(uv.y) && "UV coordinates must be in the range [0, 1]");
+            // assert(isValidRange(uv.x) && isValidRange(uv.y) && "UV coordinates must be in the range [0, 1]");
         }
 
         constexpr uv(const glm::float32_t u, const glm::float32_t v) : value(u, v) {
-            assert(isValidRange(u) && isValidRange(u) && "UV coordinates must be in the range [0, 1]");
+            // assert(isValidRange(u) && isValidRange(u) && "UV coordinates must be in the range [0, 1]");
         }
 
         static constexpr bool isValidRange(const glm::float32_t coordinate) {

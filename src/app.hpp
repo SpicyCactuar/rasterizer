@@ -20,7 +20,7 @@ namespace rasterizer {
         bool isRunning = false;
 
         explicit Application(const std::string_view& title)
-            : scene({rasterizer::parseObj("../assets/cube.obj")}),
+            : scene({rasterizer::parseObj("../assets/f22.obj")}),
               context(title),
               canvas(context.framebufferWidth, context.framebufferHeight),
               frustum(
@@ -203,7 +203,7 @@ namespace rasterizer {
                         .uvs = mesh[face].uvs,
                         .averageDepth = (v0.z + v1.z + v2.z) / 3.0f,
                         .solidColor = scene.light.modulateSurfaceColor(triangleColor, normal),
-                        .surface = face % 2 == 0 ? scene.cubeSurface : scene.brickSurface
+                        .surface = scene.meshSurface.get()
                     };
 
                     trianglesToRender.emplace_back(triangle);
