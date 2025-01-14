@@ -138,7 +138,12 @@ namespace rasterizer {
             // Convention: 3 or 4 dimension vertices -> vN, 2 dimension points pN
             const auto [v0, v1, v2] = triangle.vertices;
             const auto [p0, p1, p2] = std::make_tuple(glm::vec2{v0}, glm::vec2{v1}, glm::vec2{v2});
-            const auto& [uv0, uv1, uv2] = triangle.uvs;
+            const auto& [uv0, uv1, uv2] = std::apply(
+                [](const auto&... uvs) {
+                    return std::make_tuple(rasterizer::uv{uvs.value.x, 1.0f - uvs.value.y}...);
+                },
+                triangle.uvs
+            );
             static constexpr color_t triangleLineColor = 0xA78BFAFF;
             static constexpr color_t trianglePointColor = 0x7C3AEDFF;
 
