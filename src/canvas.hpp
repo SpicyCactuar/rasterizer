@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 
 #include <glm/glm.hpp>
 
@@ -28,41 +29,56 @@ namespace rasterizer {
         const Surface* surface = nullptr;
     };
 
+    typedef std::function<color_t(const glm::vec3&, const glm::float32_t&)> coloring;
+
     class Canvas {
     public:
         const std::uint32_t width, height;
 
         Canvas(const std::uint32_t width, const std::uint32_t height) : width(width),
                                                                         height(height) {
-            buffer = createFramebuffer(width, height);
+            colorBuffer = createColorBuffer(width, height);
+            if (colorBuffer == nullptr) {
+                throw std::runtime_error("Failed to create Canvas");
+            }
 
-            if (buffer == nullptr) {
+            depthBuffer = createDepthBuffer(width, height);
+            if (depthBuffer == nullptr) {
                 throw std::runtime_error("Failed to create Canvas");
             }
         }
 
         ~Canvas() {
-            if (buffer != nullptr) {
-                std::free(buffer);
-                buffer = nullptr;
+            if (depthBuffer != nullptr) {
+                std::free(depthBuffer);
+                depthBuffer = nullptr;
+            }
+            if (colorBuffer != nullptr) {
+                std::free(colorBuffer);
+                colorBuffer = nullptr;
             }
         }
 
         explicit operator const color_t*() const {
-            return buffer;
+            return colorBuffer;
         }
 
         void drawPixel(const std::int32_t row, const std::int32_t column, const color_t color) const {
             if (0 <= row && row < height && 0 <= column && column < width) {
-                buffer[row * width + column] = color;
+                colorBuffer[row * width + column] = color;
             }
         }
 
-        void drawTexel(const std::int32_t row, const std::int32_t column,
-                       const glm::vec4& v0, const glm::vec4& v1, const glm::vec4& v2,
-                       const glm::ivec2& p0, const glm::ivec2& p1, const glm::ivec2& p2,
-                       const glm::vec2& uv0, const glm::vec2& uv1, const glm::vec2& uv2,
-                       const Surface* surface) const {
+        void setDepth(const std::int32_t row, const std::int32_t column, const glm::float32_t depth) const {
+            if (0 <= row && row < height && 0 <= column && column < width) {
+                depthBuffer[row * width + column] = depth;
+            }
+        }
+
+        void drawBarycentricPixel(const std::int32_t row, const std::int32_t column,
+                                  const glm::vec4& v0, const glm::vec4& v1, const glm::vec4& v2,
+                                  const glm::ivec2& p0, const glm::ivec2& p1, const glm::ivec2& p2,
+                                  const coloring& coloring) const {
             const auto barycentric = barycentricWeights(p0, p1, p2, {column, row});
 
             // Perspective-correct interpolation
@@ -72,24 +88,17 @@ namespace rasterizer {
                                                            barycentric.y * (1 / v1.w) +
                                                            barycentric.z * (1 / v2.w);
 
-            // v.w holds the depth information but does not interpolate linearly, (1 / v.w) does
-            // Interpolate linearly and undo division at the end
-            const glm::float32_t uInterpolated = (barycentric.x * (uv0.x / v0.w) +
-                                                  barycentric.y * (uv1.x / v1.w) +
-                                                  barycentric.z * (uv2.x / v2.w)) / wReciprocalInterpolated;
+            // d = 1 / w which is smaller as w is larger (ie: further away)
+            // Invert the value so that d is larger as values are further away
+            const glm::float32_t normalizedDepth = 1.0f - wReciprocalInterpolated;
 
-            const glm::float32_t vInterpolated = (barycentric.x * (uv0.y / v0.w) +
-                                                  barycentric.y * (uv1.y / v1.w) +
-                                                  barycentric.z * (uv2.y / v2.w)) / wReciprocalInterpolated;
+            // If value is further away, we avoid drawing
+            if (normalizedDepth >= depthBuffer[row * width + column]) {
+                return;
+            }
 
-            // Map the UV coordinate to the range [0..{texture.width,texture.height} - 1]
-            // Apply modulo to account for degenerate point-outside-triangle barycentric case
-            const std::size_t xTex = static_cast<std::size_t>(
-                                         std::abs(uInterpolated * (surface->width - 1))) % surface->width;
-            const std::size_t yTex = static_cast<std::size_t>(
-                                         std::abs(vInterpolated * (surface->height - 1))) % surface->height;
-
-            drawPixel(row, column, (*surface)[yTex * surface->width + xTex]);
+            drawPixel(row, column, coloring(barycentric, wReciprocalInterpolated));
+            setDepth(row, column, normalizedDepth);
         }
 
         void drawRectangle(const std::int32_t x, const std::int32_t y,
@@ -155,7 +164,7 @@ namespace rasterizer {
 
             if (drawTriangleFill) {
                 if (triangleFillSolid) {
-                    drawSolidTriangle(p0, p1, p2, triangle.solidColor);
+                    drawSolidTriangle(v0, v1, v2, p0, p1, p2, triangle.solidColor);
                 } else {
                     // Only 2 fill modes, therefore this is the FillMode::TEXTURED case
                     drawTexturedTriangle(v0, v1, v2, p0, p1, p2, uv0, uv1, uv2, triangle.surface);
@@ -186,12 +195,14 @@ namespace rasterizer {
         }
 
         void clear() const {
-            // Clear framebuffer contents
+            // Clear buffers contents
             static constexpr color_t clearColor = 0x2E1065FF;
+            static constexpr glm::float32_t clearDepth = 1.0f;
 
             for (std::uint32_t row = 0; row < height; ++row) {
                 for (std::uint32_t column = 0; column < width; ++column) {
                     drawPixel(row, column, clearColor);
+                    setDepth(row, column, clearDepth);
                 }
             }
         }
@@ -214,13 +225,61 @@ namespace rasterizer {
          * The C++ approach I would use is boost::static_vector<color_t>
          * Cannot use std::array as size is not known at compile time
          */
-        color_t* buffer = nullptr;
+        color_t* colorBuffer = nullptr;
+        glm::float32_t* depthBuffer = nullptr;
 
         std::uint32_t polygonModeMask = static_cast<std::uint32_t>(PolygonMode::LINE);
         std::uint32_t fillModeMask = static_cast<std::uint32_t>(FillMode::SOLID);
 
-        static color_t* createFramebuffer(const std::uint32_t width, const std::uint32_t height) {
+        static color_t* createColorBuffer(const std::uint32_t width, const std::uint32_t height) {
             return static_cast<color_t*>(std::calloc(width * height, sizeof(color_t)));
+        }
+
+        static glm::float32_t* createDepthBuffer(const std::uint32_t width, const std::uint32_t height) {
+            return static_cast<glm::float32_t*>(std::calloc(width * height, sizeof(color_t)));
+        }
+
+        void drawSolidTriangle(glm::vec4 v0, glm::vec4 v1, glm::vec4 v2,
+                               glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2,
+                               const color_t color) const {
+            sortAscendingVertically(v0, v1, v2, p0, p1, p2);
+
+            const coloring solidColoring = [&color](auto...) {
+                return color;
+            };
+
+            drawBarycentricTriangle(v0, v1, v2, p0, p1, p2, solidColoring);
+        }
+
+        void drawTexturedTriangle(glm::vec4 v0, glm::vec4 v1, glm::vec4 v2,
+                                  glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2,
+                                  glm::vec2 uv0, glm::vec2 uv1, glm::vec2 uv2,
+                                  const Surface* surface) const {
+            sortAscendingVertically(v0, v1, v2, p0, p1, p2, uv0, uv1, uv2);
+
+            const coloring barycentricColoring = [&v0, &v1, &v2, &uv0, &uv1, &uv2, &surface]
+            (const glm::vec3& barycentric, const glm::float32_t& wReciprocal) {
+                // v.w holds the depth information but does not interpolate linearly, (1 / v.w) does
+                // Interpolate linearly and undo division at the end
+                const glm::float32_t uInterpolated = (barycentric.x * (uv0.x / v0.w) +
+                                                      barycentric.y * (uv1.x / v1.w) +
+                                                      barycentric.z * (uv2.x / v2.w)) / wReciprocal;
+
+                const glm::float32_t vInterpolated = (barycentric.x * (uv0.y / v0.w) +
+                                                      barycentric.y * (uv1.y / v1.w) +
+                                                      barycentric.z * (uv2.y / v2.w)) / wReciprocal;
+
+                // Map the UV coordinate to the range [0..{texture.width,texture.height} - 1]
+                // Apply modulo to account for degenerate point-outside-triangle barycentric case
+                const std::size_t xTex = static_cast<std::size_t>(
+                                             std::abs(uInterpolated * (surface->width - 1))) % surface->width;
+                const std::size_t yTex = static_cast<std::size_t>(
+                                             std::abs(vInterpolated * (surface->height - 1))) % surface->height;
+
+                return (*surface)[yTex * surface->width + xTex];
+            };
+
+            drawBarycentricTriangle(v0, v1, v2, p0, p1, p2, barycentricColoring);
         }
 
         ///////////////////////////////////////////////////////////////////////////////
@@ -245,102 +304,9 @@ namespace rasterizer {
         // Based on diagram by: Pikuma (Gustavo Pezzi)
         //
         ///////////////////////////////////////////////////////////////////////////////
-        void drawSolidTriangle(glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2, const color_t color) const {
-            sortAscendingVertically(p0, p1, p2);
-
-            if (p1.y == p2.y) {
-                // Triangle is flat bottom
-                drawSolidFlatBottomTriangle(p0, p1, p2, color);
-            } else if (p0.y == p1.y) {
-                // Triangle is flat top
-                drawSolidFlatTopTriangle(p0, p1, p2, color);
-            } else {
-                // Solution based on similar triangles
-                const glm::ivec2 mid{
-                    (p2.x - p0.x) * (p1.y - p0.y) / (p2.y - p0.y) + p0.x,
-                    p1.y
-                };
-
-                // Draw flat-bottom triangle
-                drawSolidFlatBottomTriangle(p0, p1, mid, color);
-
-                // Draw flat-top triangle
-                drawSolidFlatTopTriangle(p1, mid, p2, color);
-            }
-        }
-
-        ///////////////////////////////////////////////////////////////////////////////
-        //
-        //           p0
-        //          /  \
-        //         /    \
-        //        /      \
-        //       /        \
-        //      /          \
-        //     p1 -------- p2
-        //
-        // Based on diagram by: Pikuma (Gustavo Pezzi)
-        //
-        ///////////////////////////////////////////////////////////////////////////////
-        void drawSolidFlatBottomTriangle(const glm::ivec2& p0, const glm::ivec2& p1, const glm::ivec2& p2,
-                                         const color_t color) const {
-            // Find the two slopes (two triangle legs)
-            // Inverse is taken as y becomes independent axis
-            const auto invSlope01 = static_cast<glm::float32_t>(p1.x - p0.x) / static_cast<glm::float32_t>(p1.y - p0.y);
-            const auto invSlope02 = static_cast<glm::float32_t>(p2.x - p0.x) / static_cast<glm::float32_t>(p2.y - p0.y);
-
-            // Start at the top vertex p0
-            auto startX = static_cast<glm::float32_t>(p0.x);
-            auto endX = static_cast<glm::float32_t>(p0.x);
-
-            // Loop all the scanlines from top to bottom
-            // Since Y+ is downward, we increment Y on each iteration
-            for (auto y = p0.y; y <= p2.y; ++y) {
-                drawLine({startX, y}, {endX, y}, color);
-                startX += invSlope01;
-                endX += invSlope02;
-            }
-        }
-
-        ///////////////////////////////////////////////////////////////////////////////
-        //
-        //     p0 -------- p1
-        //      \          /
-        //       \        /
-        //        \      /
-        //         \    /
-        //          \  /
-        //           p2
-        //
-        // Based on diagram by: Pikuma (Gustavo Pezzi)
-        //
-        ///////////////////////////////////////////////////////////////////////////////
-        void drawSolidFlatTopTriangle(const glm::ivec2& p0, const glm::ivec2& p1, const glm::ivec2& p2,
-                                      const color_t color) const {
-            // Find the two slopes (two triangle legs)
-            // Inverse is taken as y becomes independent axis
-            const auto invSlope20 = static_cast<glm::float32_t>(p0.x - p2.x) / static_cast<glm::float32_t>(p0.y - p2.y);
-            const auto invSlope21 = static_cast<glm::float32_t>(p1.x - p2.x) / static_cast<glm::float32_t>(p1.y - p2.y);
-
-            // Start at the top vertex p0
-            auto startX = static_cast<glm::float32_t>(p2.x);
-            auto endX = static_cast<glm::float32_t>(p2.x);
-
-            // Loop all the scanlines from top to bottom
-            // Since Y- is upward, we decrement Y on each iteration
-            for (auto y = p2.y; y >= p0.y; --y) {
-                drawLine({startX, y}, {endX, y}, color);
-                startX -= invSlope20;
-                endX -= invSlope21;
-            }
-        }
-
-        void drawTexturedTriangle(glm::vec4 v0, glm::vec4 v1, glm::vec4 v2,
-                                  glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2,
-                                  glm::vec2 uv0, glm::vec2 uv1, glm::vec2 uv2,
-                                  const Surface* surface) const {
-            sortAscendingVertically(v0, v1, v2, p0, p1, p2, uv0, uv1, uv2);
-
+        void drawBarycentricTriangle(const glm::vec4& v0, const glm::vec4& v1, const glm::vec4& v2,
+                                     const glm::ivec2& p0, const glm::ivec2& p1, const glm::ivec2& p2,
+                                     const coloring& coloring) const {
             // Compute inverse slopes 0 -> 1 and 0 -> 2
             glm::float32_t invSlope01 = 0.0f;
             glm::float32_t invSlope02 = 0.0f;
@@ -364,7 +330,7 @@ namespace rasterizer {
                     }
 
                     for (std::int32_t x = xStart; x < xEnd; ++x) {
-                        drawTexel(y, x, v0, v1, v2, p0, p1, p2, uv0, uv1, uv2, surface);
+                        drawBarycentricPixel(y, x, v0, v1, v2, p0, p1, p2, coloring);
                     }
                 }
             }
@@ -376,6 +342,7 @@ namespace rasterizer {
                 invSlope12 = static_cast<glm::float32_t>(p2.x - p1.x) / std::abs(p2.y - p1.y);
             }
 
+            // Draw flat-top triangle
             if (p2.y - p1.y != 0) {
                 for (std::int32_t y = p1.y; y <= p2.y; ++y) {
                     std::int32_t xStart = p1.x + (y - p1.y) * invSlope12;
@@ -387,25 +354,29 @@ namespace rasterizer {
                     }
 
                     for (std::int32_t x = xStart; x < xEnd; ++x) {
-                        drawTexel(y, x, v0, v1, v2, p0, p1, p2, uv0, uv1, uv2, surface);
+                        drawBarycentricPixel(y, x, v0, v1, v2, p0, p1, p2, coloring);
                     }
                 }
             }
         }
 
-        static void sortAscendingVertically(glm::ivec2& p0, glm::ivec2& p1, glm::ivec2& p2) {
+        static void sortAscendingVertically(glm::vec4& v0, glm::vec4& v1, glm::vec4& v2,
+                                            glm::ivec2& p0, glm::ivec2& p1, glm::ivec2& p2) {
             // Sort such that p0.y <= p1.y <= p2.y
             if (p1.y < p0.y) {
                 // p1.y < p0.y => p0.y < p1.y
                 std::swap(p0, p1);
+                std::swap(v0, v1);
             }
             if (p2.y < p1.y) {
                 // p2.y < p1.y => p1.y < p2.y
                 std::swap(p1, p2);
+                std::swap(v1, v2);
             }
             if (p1.y < p0.y) {
                 // p1.y < p0.y => p0.y < p1.y
                 std::swap(p0, p1);
+                std::swap(v0, v1);
             }
         }
 
