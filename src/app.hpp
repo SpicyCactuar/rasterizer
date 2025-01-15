@@ -201,8 +201,6 @@ namespace rasterizer {
                 }
             }
 
-            // Due to backface culling, it's possible meshes.size() > trianglesToRender.size() => Can trim std::vector
-            trianglesToRender.shrink_to_fit();
             return trianglesToRender;
         }
 
