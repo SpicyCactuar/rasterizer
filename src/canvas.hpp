@@ -24,7 +24,6 @@ namespace rasterizer {
     struct Triangle {
         const std::array<glm::vec4, 3> vertices;
         const std::array<glm::vec2, 3> uvs;
-        const glm::float32_t averageDepth;
         const color_t solidColor = defaultTriangleFillColor;
         const Surface* surface = nullptr;
     };

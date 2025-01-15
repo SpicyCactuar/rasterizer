@@ -128,19 +128,11 @@ namespace rasterizer {
         }
 
         void drawScene() const {
-            auto trianglesToRender = computeTrianglesToRender();
-
-            // Sort from back to front
-            std::vector<std::size_t> indicesByDepth(trianglesToRender.size());
-            std::iota(indicesByDepth.begin(), indicesByDepth.end(), 0);
-            std::sort(indicesByDepth.begin(), indicesByDepth.end(),
-                      [&trianglesToRender](const std::size_t t1, const std::size_t t2) {
-                          return trianglesToRender[t1].averageDepth > trianglesToRender[t2].averageDepth;
-                      });
+            const auto trianglesToRender = computeTrianglesToRender();
 
             scene.lock();
-            for (const auto ti : indicesByDepth) {
-                canvas.drawTriangle(trianglesToRender[ti]);
+            for (const auto& triangle : trianglesToRender) {
+                canvas.drawTriangle(triangle);
             }
             scene.unlock();
         }
@@ -201,7 +193,6 @@ namespace rasterizer {
                             toScreenCoordinate(v2, projection, viewport)
                         },
                         .uvs = mesh[face].uvs,
-                        .averageDepth = (v0.z + v1.z + v2.z) / 3.0f,
                         .solidColor = scene.light.modulateSurfaceColor(triangleColor, normal),
                         .surface = scene.meshSurface.get()
                     };
@@ -210,6 +201,7 @@ namespace rasterizer {
                 }
             }
 
+            // Due to backface culling, it's possible meshes.size() > trianglesToRender.size() => Can trim std::vector
             trianglesToRender.shrink_to_fit();
             return trianglesToRender;
         }
