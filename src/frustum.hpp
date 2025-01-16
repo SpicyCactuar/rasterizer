@@ -9,11 +9,25 @@ namespace rasterizer {
         const glm::float32_t aspect; // aspect = height / width
         const glm::float32_t fov;
         const glm::float32_t near, far; // assumed to be along z-axis
-        const glm::vec3 position{0.0f, 0.0f, 0.0f};
+
+        glm::vec3 eye{0.0f, 0.0f, 0.0f};
 
         Frustum(const glm::float32_t aspect, const glm::float32_t fov,
                 const glm::float32_t near, const glm::float32_t far)
             : aspect(aspect), fov(fov), near(near), far(far) {
+        }
+
+        glm::mat4 view(const glm::vec3& target, const glm::vec3& up) const {
+            const glm::vec3 forward = glm::normalize(target - eye);
+            const glm::vec3 right = glm::normalize(glm::cross(up, forward));
+            const glm::vec3 upward = glm::cross(forward, right);
+
+            return {
+                right.x, upward.x, forward.x, 0.0f,
+                right.y, upward.y, forward.y, 0.0f,
+                right.z, upward.z, forward.z, 0.0f,
+                -glm::dot(right, eye), -glm::dot(upward, eye), -glm::dot(forward, eye), 1.0f
+            };
         }
 
         glm::mat4 perspectiveProjection() const {

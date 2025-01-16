@@ -22,6 +22,7 @@ namespace rasterizer {
         const std::vector<glm::vec2> uvs;
         const std::vector<std::uint32_t> faceIndices;
         const std::vector<std::uint32_t> uvIndices;
+
         glm::vec3 eulerRotation{0.0f};
         glm::vec3 scale{1.0f};
         glm::vec3 translation{0.0f};

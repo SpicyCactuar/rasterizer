@@ -78,6 +78,10 @@ namespace rasterizer {
                                   const glm::vec4& v0, const glm::vec4& v1, const glm::vec4& v2,
                                   const glm::ivec2& p0, const glm::ivec2& p1, const glm::ivec2& p2,
                                   const coloring& coloring) const {
+            if (row < 0 || row >= height || column < 0 || column >= width) {
+                return;
+            }
+
             const auto barycentric = barycentricWeights(p0, p1, p2, {column, row});
 
             // Perspective-correct interpolation

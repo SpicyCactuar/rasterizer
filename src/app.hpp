@@ -54,10 +54,12 @@ namespace rasterizer {
 
         void update() {
             for (Mesh& mesh : scene.meshes) {
-                mesh.eulerRotation += glm::vec3{0.01f, 0.01f, 0.01f};
+                mesh.eulerRotation += glm::vec3{0.00f, 0.00f, 0.00f};
                 // Put object in front of camera
                 mesh.translation.z = 5.0f;
             }
+            frustum.eye.x += 0.008f;
+            frustum.eye.y += 0.008f;
         }
 
         void render() const {
@@ -149,6 +151,8 @@ namespace rasterizer {
                 canvas.width / 2.0f, canvas.height / 2.0f, 0.0f, 1.0f
             };
 
+            // Left-handed system => +Z forward
+            const auto view = frustum.view({0.0f, 0.0f, 5.0f}, {0.0f, 1.0f, 0.0f});
             for (auto& mesh : scene.meshes) {
                 for (std::size_t face = 0; face < mesh.facesAmount(); ++face) {
                     // Extract and transform vertices
@@ -159,9 +163,9 @@ namespace rasterizer {
                         },
                         mesh[face].vertices
                     );
-                    v0 = toWorldCoordinate(v0, meshModel); /*    v0     */
-                    v1 = toWorldCoordinate(v1, meshModel); /*  /    \   */
-                    v2 = toWorldCoordinate(v2, meshModel); /* v2 --- v1 */
+                    v0 = toViewSpace(v0, meshModel, view); /*    v0     */
+                    v1 = toViewSpace(v1, meshModel, view); /*  /    \   */
+                    v2 = toViewSpace(v2, meshModel, view); /* v2 --- v1 */
 
                     const auto e01 = glm::normalize(glm::vec3(v1 - v0));
                     const auto e02 = glm::normalize(glm::vec3(v2 - v0));
@@ -169,7 +173,9 @@ namespace rasterizer {
 
                     // Cull if necessary
                     if (backFaceCulling) {
-                        const auto triangleToCamera = glm::normalize(frustum.position - glm::vec3(v0));
+                        // Points are in View-space, camera position in View-space is always [0 0 0]
+                        // [0 0 0] - v = -v
+                        const auto triangleToCamera = glm::normalize(-glm::vec3(v0));
 
                         // Cull if triangle normal and triangleToCamera are not pointing in the same direction
                         if (glm::dot(normal, triangleToCamera) < 0.0f) {
@@ -187,10 +193,9 @@ namespace rasterizer {
 
                     const auto triangle = Triangle{
                         .vertices = {
-                            // Map from clip space to screen space
-                            toScreenCoordinate(v0, projection, viewport),
-                            toScreenCoordinate(v1, projection, viewport),
-                            toScreenCoordinate(v2, projection, viewport)
+                            toScreenSpace(v0, projection, viewport),
+                            toScreenSpace(v1, projection, viewport),
+                            toScreenSpace(v2, projection, viewport)
                         },
                         .uvs = mesh[face].uvs,
                         .solidColor = scene.light.modulateSurfaceColor(triangleColor, normal),
@@ -204,15 +209,18 @@ namespace rasterizer {
             return trianglesToRender;
         }
 
-        static glm::vec4 toWorldCoordinate(const glm::vec4& point, const glm::mat4& model) {
-            return model * point;
+        static glm::vec4 toViewSpace(const glm::vec4& pointModelSpace,
+                                     const glm::mat4& model,
+                                     const glm::mat4& view) {
+            // Model-space -> World-space -> View-space
+            return view * model * pointModelSpace;
         }
 
-        static glm::vec4 toScreenCoordinate(const glm::vec4& point,
-                                            const glm::mat4& projection,
-                                            const glm::mat4& viewport) {
-            // World-space -> Clip-space
-            auto projected = projection * point;
+        static glm::vec4 toScreenSpace(const glm::vec4& pointViewSpace,
+                                       const glm::mat4& projection,
+                                       const glm::mat4& viewport) {
+            // View-space -> Clip-space
+            auto projected = projection * pointViewSpace;
 
             // {x, y} Clip-space -> {x, y} Screen-space
             projected = viewport * projected;
