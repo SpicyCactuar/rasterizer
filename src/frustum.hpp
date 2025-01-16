@@ -10,7 +10,9 @@ namespace rasterizer {
         const glm::float32_t fov;
         const glm::float32_t near, far; // assumed to be along z-axis
 
-        glm::vec3 eye{0.0f, 0.0f, 0.0f};
+        glm::vec3 eye{0.0f};
+        glm::float32_t yaw = 0.0f;
+        glm::vec3 direction{0.0f, 0.0f, 1.0f};
 
         Frustum(const glm::float32_t aspect, const glm::float32_t fov,
                 const glm::float32_t near, const glm::float32_t far)

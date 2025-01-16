@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) try {
 
         previousFrameTime = SDL_GetTicks64();
 
-        app.processInput();
+        app.processInput(deltaTime);
         app.update(deltaTime);
         app.render();
     }

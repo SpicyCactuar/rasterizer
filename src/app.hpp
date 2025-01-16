@@ -6,6 +6,10 @@
 
 #include <SDL2/SDL.h>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #include "scene.hpp"
 #include "obj.hpp"
 #include "frustum.hpp"
@@ -35,7 +39,7 @@ namespace rasterizer {
             isRunning = false;
         }
 
-        void processInput() {
+        void processInput(const glm::float32_t delta) {
             SDL_Event event;
             SDL_PollEvent(&event);
 
@@ -43,22 +47,23 @@ namespace rasterizer {
                 case SDL_QUIT:
                     isRunning = false;
                     break;
-                case SDL_KEYUP:
-                    processKeypress(event.key.keysym.sym);
+                case SDL_KEYDOWN:
+                    processKeypress(event.key.keysym.sym, delta);
                     break;
                 default:
                     break;
             }
         }
 
-        void update(const glm::float32_t deltaTime) {
+        void update(const glm::float32_t delta) {
             for (Mesh& mesh : scene.meshes) {
                 // mesh.eulerRotation += 0.6f * deltaTime;
                 // Put object in front of camera
                 mesh.translation.z = 5.0f;
             }
-            frustum.eye.x += 0.8f * deltaTime;
-            frustum.eye.y += 0.8f * deltaTime;
+            // Orientate frustum according to yaw rotation, around Y+ axis
+            const auto cameraYawRotation = glm::mat3(glm::rotate(glm::identity<glm::mat4>(), frustum.yaw, up));
+            frustum.direction = cameraYawRotation * forward;
         }
 
         void render() const {
@@ -71,6 +76,10 @@ namespace rasterizer {
         }
 
     private:
+        // Left-handed system => +Z forward
+        static constexpr glm::vec3 forward{0.0f, 0.0, 1.0f};
+        static constexpr glm::vec3 up{0.0f, 1.0f, 0.0f};
+
         Scene scene;
         RenderContext context;
         Canvas canvas;
@@ -78,7 +87,7 @@ namespace rasterizer {
 
         bool backFaceCulling = true;
 
-        void processKeypress(const SDL_Keycode keycode) {
+        void processKeypress(const SDL_Keycode keycode, const glm::float32_t delta) {
             switch (keycode) {
                 case SDLK_ESCAPE:
                     isRunning = false;
@@ -118,11 +127,30 @@ namespace rasterizer {
                     canvas.set(FillMode::TEXTURE);
                     break;
                 case SDLK_c:
-                    backFaceCulling = true;
+                    backFaceCulling = !backFaceCulling;
                     break;
-                case SDLK_d:
-                    backFaceCulling = false;
+                case SDLK_UP:
+                    frustum.eye.y += 3.0f * delta;
                     break;
+                case SDLK_DOWN:
+                    frustum.eye.y -= 3.0f * delta;
+                    break;
+                case SDLK_LEFT:
+                    frustum.yaw -= 1.0f * delta;
+                    break;
+                case SDLK_RIGHT:
+                    frustum.yaw += 1.0f * delta;
+                    break;
+                case SDLK_w: {
+                    const auto forwardVelocity = 5.0f * forward * delta;
+                    frustum.eye += forwardVelocity;
+                    break;
+                }
+                case SDLK_s: {
+                    const auto forwardVelocity = 5.0f * forward * delta;
+                    frustum.eye -= forwardVelocity;
+                    break;
+                }
                 default:
                     break;
             }
@@ -150,8 +178,8 @@ namespace rasterizer {
                 canvas.width / 2.0f, canvas.height / 2.0f, 0.0f, 1.0f
             };
 
-            // Left-handed system => +Z forward
-            const auto view = frustum.view({0.0f, 0.0f, 5.0f}, {0.0f, 1.0f, 0.0f});
+            // Offset the camera position in the direction where the camera is pointing at
+            const auto view = frustum.view(frustum.eye + frustum.direction, up);
             for (auto& mesh : scene.meshes) {
                 for (std::size_t face = 0; face < mesh.facesAmount(); ++face) {
                     // Extract and transform vertices
