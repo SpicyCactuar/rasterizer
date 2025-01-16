@@ -8,19 +8,25 @@
 int main(int argc, char* argv[]) try {
     static constexpr std::string_view title = "Hello Rasterizer";
     static constexpr std::uint32_t FPS = 120;
-    static constexpr std::uint32_t FRAME_TIME = 1000 / FPS;
+    static constexpr std::uint64_t FRAME_TARGET_TIME = 1000 / FPS;
 
     rasterizer::Application app(title);
+    std::uint64_t previousFrameTime = 0;
 
     while (app.isRunning) {
-        const std::uint64_t frameStart = SDL_GetTicks64();
-        app.processInput();
-        app.update();
-        app.render();
-        if (const std::uint64_t pendingFrameTime = SDL_GetTicks64() - frameStart;
-            pendingFrameTime < FRAME_TIME) {
-            SDL_Delay(FRAME_TIME - pendingFrameTime);
+        // Only delay execution if we are running too fast
+        if (const std::uint64_t timeToWait = FRAME_TARGET_TIME - (SDL_GetTicks() - previousFrameTime);
+            0 < timeToWait && timeToWait <= FRAME_TARGET_TIME) {
+            SDL_Delay(timeToWait);
         }
+
+        const auto deltaTime = static_cast<glm::float32_t>(SDL_GetTicks64() - previousFrameTime) / 1000.0f;
+
+        previousFrameTime = SDL_GetTicks64();
+
+        app.processInput();
+        app.update(deltaTime);
+        app.render();
     }
 
     return EXIT_SUCCESS;

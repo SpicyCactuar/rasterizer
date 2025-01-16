@@ -1,7 +1,6 @@
 #pragma once
 
 #include <algorithm>
-#include <numeric>
 #include <numbers>
 #include <filesystem>
 
@@ -52,14 +51,14 @@ namespace rasterizer {
             }
         }
 
-        void update() {
+        void update(const glm::float32_t deltaTime) {
             for (Mesh& mesh : scene.meshes) {
-                mesh.eulerRotation += glm::vec3{0.00f, 0.00f, 0.00f};
+                // mesh.eulerRotation += 0.6f * deltaTime;
                 // Put object in front of camera
                 mesh.translation.z = 5.0f;
             }
-            frustum.eye.x += 0.008f;
-            frustum.eye.y += 0.008f;
+            frustum.eye.x += 0.8f * deltaTime;
+            frustum.eye.y += 0.8f * deltaTime;
         }
 
         void render() const {
