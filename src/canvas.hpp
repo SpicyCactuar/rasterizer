@@ -6,6 +6,7 @@
 #include <glm/glm.hpp>
 
 #include "common.hpp"
+#include "polygon.hpp"
 
 namespace rasterizer {
     enum class PolygonMode : std::uint32_t {
@@ -17,15 +18,6 @@ namespace rasterizer {
     enum class FillMode : std::uint32_t {
         SOLID = 1 << 0,
         TEXTURE = 1 << 1,
-    };
-
-    static constexpr color_t defaultTriangleFillColor = 0x4C1D95FF;
-
-    struct Triangle {
-        const std::array<glm::vec4, 3> vertices;
-        const std::array<glm::vec2, 3> uvs;
-        const color_t solidColor = defaultTriangleFillColor;
-        const Surface* surface = nullptr;
     };
 
     typedef std::function<color_t(const glm::vec3&, const glm::float32_t&)> coloring;

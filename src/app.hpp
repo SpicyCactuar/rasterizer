@@ -16,6 +16,7 @@
 #include "canvas.hpp"
 #include "context.hpp"
 #include "mesh.hpp"
+#include "polygon.hpp"
 
 namespace rasterizer {
     class Application {
@@ -23,12 +24,11 @@ namespace rasterizer {
         bool isRunning = false;
 
         explicit Application(const std::string_view& title)
-            : scene({rasterizer::parseObj("../assets/f22.obj")}),
+            : scene({rasterizer::parseObj("../assets/cube.obj")}),
               context(title),
               canvas(context.framebufferWidth, context.framebufferHeight),
               frustum(
-                  static_cast<glm::float32_t>(canvas.height) /
-                  static_cast<glm::float32_t>(canvas.width),
+                  static_cast<glm::float32_t>(canvas.width), static_cast<glm::float32_t>(canvas.height),
                   std::numbers::pi / 3.0f, // 60 degrees
                   0.01f, 100.0f
               ) {
@@ -142,12 +142,12 @@ namespace rasterizer {
                     frustum.yaw += 1.0f * delta;
                     break;
                 case SDLK_w: {
-                    const auto forwardVelocity = 5.0f * forward * delta;
+                    const auto forwardVelocity = 5.0f * frustum.direction * delta;
                     frustum.eye += forwardVelocity;
                     break;
                 }
                 case SDLK_s: {
-                    const auto forwardVelocity = 5.0f * forward * delta;
+                    const auto forwardVelocity = 5.0f * frustum.direction * delta;
                     frustum.eye -= forwardVelocity;
                     break;
                 }
@@ -218,18 +218,30 @@ namespace rasterizer {
                     const color_t b = colorSeed & 0x0000FF00; // 0x0000BB00
                     const color_t triangleColor = r | g | b | a;
 
-                    const auto triangle = Triangle{
-                        .vertices = {
-                            toScreenSpace(v0, projection, viewport),
-                            toScreenSpace(v1, projection, viewport),
-                            toScreenSpace(v2, projection, viewport)
-                        },
-                        .uvs = mesh[face].uvs,
-                        .solidColor = scene.light.modulateSurfaceColor(triangleColor, normal),
-                        .surface = scene.meshSurface.get()
-                    };
+                    // Clip and add clipped triangles to result
+                    const auto clippedPolygon = frustum.clipPolygon(Polygon::fromTriangle(v0, v1, v2));
 
-                    trianglesToRender.emplace_back(triangle);
+                    // Resulting polygon might have less than 2 vertices that were not clipped, skip those
+                    if (clippedPolygon.verticesAmount <= 2) {
+                        continue;
+                    }
+
+                    // We extract triangles as triangle strip with center at index 0, therefore:
+                    // facesAmount == polygon.verticesAmount - 2
+                    // Assumes polygon has at least 3 vertices (a non-clipped triangle)
+                    for (size_t i = 0; i < clippedPolygon.verticesAmount - 2; ++i) {
+                        trianglesToRender.emplace_back(Triangle{
+                            .vertices = {
+                                // These are points, not vectors => w = 1.0f
+                                toScreenSpace(glm::vec4{clippedPolygon.vertices[0], 1.0f}, projection, viewport),
+                                toScreenSpace(glm::vec4{clippedPolygon.vertices[i + 1], 1.0f}, projection, viewport),
+                                toScreenSpace(glm::vec4{clippedPolygon.vertices[i + 2], 1.0f}, projection, viewport)
+                            },
+                            .uvs = mesh[face].uvs,
+                            .solidColor = scene.light.modulateSurfaceColor(triangleColor, normal),
+                            .surface = scene.meshSurface.get()
+                        });
+                    }
                 }
             }
 

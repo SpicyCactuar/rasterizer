@@ -31,7 +31,7 @@ namespace rasterizer {
             }
             brickSurface.reset(rawBrickSurface);
 
-            Surface* rawMeshSurface = loadPngSurface("../assets/f22.png");
+            Surface* rawMeshSurface = loadPngSurface("../assets/cube.png");
             if (rawMeshSurface == nullptr) {
                 throw std::runtime_error("Failed to load mesh surface");
             }
