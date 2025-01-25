@@ -67,9 +67,11 @@ namespace rasterizer {
                 // Put object in front of camera
                 mesh.translation.z = 5.0f;
             }
-            // Orientate frustum according to yaw rotation, around Y+ axis
-            const auto cameraYawRotation = glm::mat3(glm::rotate(glm::identity<glm::mat4>(), frustum.yaw, up));
-            frustum.direction = cameraYawRotation * forward;
+
+            // Orientate frustum according to rotation
+            auto cameraRotation = glm::rotate(glm::identity<glm::mat4>(), frustum.yaw, up);
+            cameraRotation = glm::rotate(cameraRotation, frustum.pitch, right);
+            frustum.forward = glm::mat3(cameraRotation) * forward;
         }
 
         void render() const {
@@ -84,6 +86,7 @@ namespace rasterizer {
     private:
         // Left-handed system => +Z forward
         static constexpr glm::vec3 forward{0.0f, 0.0, 1.0f};
+        static constexpr glm::vec3 right{1.0f, 0.0f, 0.0f};
         static constexpr glm::vec3 up{0.0f, 1.0f, 0.0f};
 
         Scene scene;
@@ -136,10 +139,10 @@ namespace rasterizer {
                     backFaceCulling = !backFaceCulling;
                     break;
                 case SDLK_UP:
-                    frustum.eye.y += 3.0f * delta;
+                    frustum.pitch += 1.0f * delta;
                     break;
                 case SDLK_DOWN:
-                    frustum.eye.y -= 3.0f * delta;
+                    frustum.pitch -= 1.0f * delta;
                     break;
                 case SDLK_LEFT:
                     frustum.yaw -= 1.0f * delta;
@@ -148,13 +151,19 @@ namespace rasterizer {
                     frustum.yaw += 1.0f * delta;
                     break;
                 case SDLK_w: {
-                    const auto forwardVelocity = 5.0f * frustum.direction * delta;
-                    frustum.eye += forwardVelocity;
+                    frustum.eye += 5.0f * frustum.forward * delta;
                     break;
                 }
                 case SDLK_s: {
-                    const auto forwardVelocity = 5.0f * frustum.direction * delta;
-                    frustum.eye -= forwardVelocity;
+                    frustum.eye += 5.0f * -frustum.forward * delta;
+                    break;
+                }
+                case SDLK_d: {
+                    frustum.eye += 5.0f * glm::normalize(glm::cross(up, frustum.forward)) * delta;
+                    break;
+                }
+                case SDLK_a: {
+                    frustum.eye += 5.0f * -glm::normalize(glm::cross(up, frustum.forward)) * delta;
                     break;
                 }
                 default:
@@ -185,7 +194,7 @@ namespace rasterizer {
             };
 
             // Offset the camera position in the direction where the camera is pointing at
-            const auto view = frustum.view(frustum.eye + frustum.direction, up);
+            const auto view = frustum.view(frustum.eye + frustum.forward, up);
             for (auto& mesh : scene.meshes) {
                 for (std::size_t face = 0; face < mesh.facesAmount(); ++face) {
                     // Extract and transform vertices

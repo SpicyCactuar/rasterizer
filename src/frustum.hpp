@@ -30,7 +30,8 @@ namespace rasterizer {
 
         glm::vec3 eye{0.0f};
         glm::float32_t yaw = 0.0f;
-        glm::vec3 direction{0.0f, 0.0f, 1.0f};
+        glm::float32_t pitch = 0.0f;
+        glm::vec3 forward{0.0f, 0.0f, 1.0f};
 
         Frustum(const glm::float32_t width, const glm::float32_t height,
                 const glm::float32_t fovVertical, const glm::float32_t near, const glm::float32_t far)
