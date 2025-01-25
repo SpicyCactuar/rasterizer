@@ -219,7 +219,8 @@ namespace rasterizer {
                     const color_t triangleColor = r | g | b | a;
 
                     // Clip and add clipped triangles to result
-                    const auto clippedPolygon = frustum.clipPolygon(Polygon::fromTriangle(v0, v1, v2));
+                    const auto clippedPolygon =
+                            frustum.clipPolygon(Polygon::fromTriangle({v0, v1, v2}, mesh[face].uvs));
 
                     // Resulting polygon might have less than 2 vertices that were not clipped, skip those
                     if (clippedPolygon.verticesAmount <= 2) {
@@ -229,15 +230,15 @@ namespace rasterizer {
                     // We extract triangles as triangle strip with center at index 0, therefore:
                     // facesAmount == polygon.verticesAmount - 2
                     // Assumes polygon has at least 3 vertices (a non-clipped triangle)
-                    for (size_t i = 0; i < clippedPolygon.verticesAmount - 2; ++i) {
+                    for (size_t v = 0; v < clippedPolygon.verticesAmount - 2; ++v) {
                         trianglesToRender.emplace_back(Triangle{
                             .vertices = {
                                 // These are points, not vectors => w = 1.0f
                                 toScreenSpace(glm::vec4{clippedPolygon.vertices[0], 1.0f}, projection, viewport),
-                                toScreenSpace(glm::vec4{clippedPolygon.vertices[i + 1], 1.0f}, projection, viewport),
-                                toScreenSpace(glm::vec4{clippedPolygon.vertices[i + 2], 1.0f}, projection, viewport)
+                                toScreenSpace(glm::vec4{clippedPolygon.vertices[v + 1], 1.0f}, projection, viewport),
+                                toScreenSpace(glm::vec4{clippedPolygon.vertices[v + 2], 1.0f}, projection, viewport)
                             },
-                            .uvs = mesh[face].uvs,
+                            .uvs = {clippedPolygon.uvs[0], clippedPolygon.uvs[v + 1], clippedPolygon.uvs[v + 2]},
                             .solidColor = scene.light.modulateSurfaceColor(triangleColor, normal),
                             .surface = scene.meshSurface.get()
                         });

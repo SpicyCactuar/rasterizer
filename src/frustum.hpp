@@ -145,11 +145,15 @@ namespace rasterizer {
             const auto [planePoint, planeNormal] = planes[static_cast<std::size_t>(plane)];
 
             std::array<glm::vec3, Polygon::MAX_POLYGON_VERTICES> insideVertices{};
+            std::array<glm::vec2, Polygon::MAX_POLYGON_VERTICES> insideUvs{};
             std::size_t insideAmount = 0;
 
             // TODO: Refactor to use std::reference_wrapper
-            const glm::vec3* previousVertex = &polygon.vertices[polygon.verticesAmount - 1];
-            const glm::vec3* currentVertex = &polygon.vertices[0];
+            const auto* previousVertex = &polygon.vertices[polygon.verticesAmount - 1];
+            const auto* previousUv = &polygon.uvs[polygon.verticesAmount - 1];
+
+            const auto* currentVertex = &polygon.vertices[0];
+            const auto* currentUv = &polygon.uvs[0];
 
             glm::float32_t previousDot = glm::dot(*previousVertex - planePoint, planeNormal);
             glm::float32_t currentDot = 0.0f;
@@ -163,25 +167,28 @@ namespace rasterizer {
                 if (currentDot * previousDot < 0.0f) {
                     // Compute intersection point I = Qp + t (Qc - Qp)
                     const glm::float32_t t = previousDot / (previousDot - currentDot);
-                    const auto intersectionPoint = *previousVertex + t * (*currentVertex - *previousVertex);
-
-                    insideVertices[insideAmount] = intersectionPoint;
+                    insideVertices[insideAmount] = glm::mix(*previousVertex, *currentVertex, t);
+                    insideUvs[insideAmount] = glm::mix(*previousUv, *currentUv, t);
                     insideAmount++;
                 }
 
                 // If current point is inside the plane, add it to inside
                 if (currentDot > 0.0f) {
                     insideVertices[insideAmount] = *currentVertex;
+                    insideUvs[insideAmount] = *currentUv;
                     insideAmount++;
                 }
 
                 // Move to the next vertex
                 previousDot = currentDot;
                 previousVertex = currentVertex;
+                previousUv = currentUv;
                 currentVertex++;
+                currentUv++;
             }
 
             polygon.vertices = insideVertices;
+            polygon.uvs = insideUvs;
             polygon.verticesAmount = insideAmount;
         }
     };
