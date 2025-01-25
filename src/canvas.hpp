@@ -23,8 +23,7 @@ namespace rasterizer {
         TEXTURE = 1 << 1,
     };
 
-    // TODO: Rename coloring -> ColorShader
-    typedef std::function<color_t(const glm::vec3&, const glm::float32_t&)> coloring;
+    typedef std::function<color_t(const glm::vec3&, const glm::float32_t&)> ColorShader;
 
     class Canvas {
     public:
@@ -83,7 +82,7 @@ namespace rasterizer {
         void drawBarycentricPixel(const std::int32_t row, const std::int32_t column,
                                   const glm::vec4& v0, const glm::vec4& v1, const glm::vec4& v2,
                                   const glm::ivec2& p0, const glm::ivec2& p1, const glm::ivec2& p2,
-                                  const coloring& coloring) const {
+                                  const ColorShader& shader) const {
             if (row < 0 || row >= height || column < 0 || column >= width) {
                 return;
             }
@@ -106,7 +105,7 @@ namespace rasterizer {
                 return;
             }
 
-            drawPixel(row, column, coloring(barycentric, wReciprocalInterpolated));
+            drawPixel(row, column, shader(barycentric, wReciprocalInterpolated));
             setDepth(row, column, normalizedDepth);
         }
 
@@ -271,7 +270,7 @@ namespace rasterizer {
                                const color_t color) const {
             sortAscendingVertically(v0, v1, v2, p0, p1, p2);
 
-            const coloring solidColoring = [&color](auto...) {
+            const ColorShader solidColoring = [&color](auto...) {
                 return color;
             };
 
@@ -284,7 +283,7 @@ namespace rasterizer {
                                   const Surface* surface) const {
             sortAscendingVertically(v0, v1, v2, p0, p1, p2, uv0, uv1, uv2);
 
-            const coloring barycentricColoring = [&v0, &v1, &v2, &uv0, &uv1, &uv2, &surface]
+            const ColorShader barycentricColoring = [&v0, &v1, &v2, &uv0, &uv1, &uv2, &surface]
             (const glm::vec3& barycentric, const glm::float32_t& wReciprocal) {
                 // v.w holds the depth information but does not interpolate linearly, (1 / v.w) does
                 // Interpolate linearly and undo division at the end
@@ -333,7 +332,7 @@ namespace rasterizer {
         ///////////////////////////////////////////////////////////////////////////////
         void drawBarycentricTriangle(const glm::vec4& v0, const glm::vec4& v1, const glm::vec4& v2,
                                      const glm::ivec2& p0, const glm::ivec2& p1, const glm::ivec2& p2,
-                                     const coloring& coloring) const {
+                                     const ColorShader& shader) const {
             // Compute inverse slopes 0 -> 1 and 0 -> 2
             glm::float32_t invSlope01 = 0.0f;
             glm::float32_t invSlope02 = 0.0f;
@@ -357,7 +356,7 @@ namespace rasterizer {
                     }
 
                     for (std::int32_t x = xStart; x < xEnd; ++x) {
-                        drawBarycentricPixel(y, x, v0, v1, v2, p0, p1, p2, coloring);
+                        drawBarycentricPixel(y, x, v0, v1, v2, p0, p1, p2, shader);
                     }
                 }
             }
@@ -381,7 +380,7 @@ namespace rasterizer {
                     }
 
                     for (std::int32_t x = xStart; x < xEnd; ++x) {
-                        drawBarycentricPixel(y, x, v0, v1, v2, p0, p1, p2, coloring);
+                        drawBarycentricPixel(y, x, v0, v1, v2, p0, p1, p2, shader);
                     }
                 }
             }
