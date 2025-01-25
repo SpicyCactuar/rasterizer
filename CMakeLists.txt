@@ -21,6 +21,10 @@ find_package(glm CONFIG REQUIRED)
 # Add your executable
 add_executable(rasterizer src/main.cpp)
 
+# Define the constant value as a preprocessor macro
+set(RESOLUTION_SCALE 1)
+target_compile_definitions(rasterizer PRIVATE RESOLUTION_SCALE=${RESOLUTION_SCALE})
+
 # Add target to executable name
 string(TOLOWER "${CMAKE_BUILD_TYPE}" BUILD_TYPE_LOWER)
 set_target_properties(rasterizer PROPERTIES

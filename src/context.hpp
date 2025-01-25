@@ -8,16 +8,15 @@
 #include <SDL2/SDL_image.h>
 
 namespace rasterizer {
-    static constexpr std::uint32_t defaultWindowWidth = 1600;
-    static constexpr std::uint32_t defaultWindowHeight = 1075;
+    static constexpr std::uint32_t defaultWindowWidth = 1600, defaultWindowHeight = 1075;
 
     class RenderContext {
     public:
         std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window{nullptr, SDL_DestroyWindow};
         std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> renderer{nullptr, SDL_DestroyRenderer};
-        std::unique_ptr<SDL_Texture, decltype(&SDL_DestroyTexture)> framebufferTexture{nullptr, SDL_DestroyTexture};
 
-        std::uint32_t framebufferWidth, framebufferHeight;
+        std::uint32_t windowWidth;
+        std::uint32_t windowHeight;
 
         explicit RenderContext(const std::string_view& windowTitle) {
             if (!initializeSDL()) {
@@ -39,17 +38,10 @@ namespace rasterizer {
             std::int32_t windowWidth, windowHeight;
             SDL_GetWindowSize(rawWindow, &windowWidth, &windowHeight);
 
-            framebufferWidth = static_cast<std::uint32_t>(windowWidth);
-            framebufferHeight = static_cast<std::uint32_t>(windowHeight);
+            this->windowWidth = static_cast<std::uint32_t>(windowWidth);
+            this->windowHeight = static_cast<std::uint32_t>(windowHeight);
 
-            std::print("Display size: {} x {}\n", framebufferWidth, framebufferHeight);
-
-            SDL_Texture* rawFramebufferTexture = createFramebufferTexture(
-                rawRenderer, framebufferWidth, framebufferHeight);
-            if (rawFramebufferTexture == nullptr) {
-                throw std::runtime_error("Failed to initialize framebuffer texture");
-            }
-            framebufferTexture.reset(rawFramebufferTexture);
+            std::print("Display size: {} x {}\n", windowWidth, windowHeight);
         }
 
         ~RenderContext() {
@@ -63,14 +55,14 @@ namespace rasterizer {
             SDL_RenderClear(renderer.get());
         }
 
-        void render(const Canvas& canvas) const {
-            const auto update = SDL_UpdateTexture(framebufferTexture.get(), nullptr,
-                                                  static_cast<const color_t*>(canvas),
-                                                  static_cast<int>(sizeof(color_t) * framebufferWidth));
-            const auto renderCopy = SDL_RenderCopy(renderer.get(), framebufferTexture.get(), nullptr, nullptr);
+        void render(SDL_Texture* framebufferTexture,
+                    const color_t* framebuffer, const std::uint32_t framebufferStride) const {
+            const auto update = SDL_UpdateTexture(framebufferTexture, nullptr,
+                                                  framebuffer, static_cast<int>(sizeof(color_t) * framebufferStride));
+            const auto renderCopy = SDL_RenderCopy(renderer.get(), framebufferTexture, nullptr, nullptr);
 
             if (update != EXIT_SUCCESS || renderCopy != EXIT_SUCCESS) {
-                throw std::runtime_error("Failed to render framebuffer texture");
+                throw std::runtime_error("Failed to render frame");
             }
         }
 
@@ -141,23 +133,6 @@ namespace rasterizer {
             }
 
             return renderer;
-        }
-
-        static SDL_Texture* createFramebufferTexture(SDL_Renderer* renderer,
-                                                     const std::uint32_t width,
-                                                     const std::uint32_t height) {
-            SDL_Texture* framebufferTexture = SDL_CreateTexture(renderer,
-                                                                SDL_PIXELFORMAT_RGBA8888,
-                                                                SDL_TEXTUREACCESS_STREAMING,
-                                                                static_cast<std::int32_t>(width),
-                                                                static_cast<std::int32_t>(height));
-
-            if (framebufferTexture == nullptr) {
-                std::print(std::cerr, "SDL_CreateTexture Error: {}\n", SDL_GetError());
-                return nullptr;
-            }
-
-            return framebufferTexture;
         }
     };
 }

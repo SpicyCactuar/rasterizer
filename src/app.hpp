@@ -19,6 +19,12 @@
 #include "polygon.hpp"
 
 namespace rasterizer {
+#ifndef RESOLUTION_SCALE
+    #define RESOLUTION_SCALE 1
+#endif
+
+    static constexpr std::uint32_t resolutionScale = std::max(RESOLUTION_SCALE, 1);
+
     class Application {
     public:
         bool isRunning = false;
@@ -26,7 +32,7 @@ namespace rasterizer {
         explicit Application(const std::string_view& title)
             : scene({rasterizer::parseObj("../assets/cube.obj")}),
               context(title),
-              canvas(context.framebufferWidth, context.framebufferHeight),
+              canvas(context.windowWidth / resolutionScale, context.windowHeight / resolutionScale, context),
               frustum(
                   static_cast<glm::float32_t>(canvas.width), static_cast<glm::float32_t>(canvas.height),
                   std::numbers::pi / 3.0f, // 60 degrees
@@ -71,7 +77,7 @@ namespace rasterizer {
             canvas.clear();
             canvas.drawGrid();
             drawScene();
-            context.render(canvas);
+            context.render(canvas.texture(), canvas.framebuffer(), canvas.width);
             context.present();
         }
 

@@ -2,10 +2,13 @@
 
 #include <cstdint>
 #include <functional>
+#include <iostream>
 
+#include <SDL2/SDL_render.h>
 #include <glm/glm.hpp>
 
 #include "common.hpp"
+#include "context.hpp"
 #include "polygon.hpp"
 
 namespace rasterizer {
@@ -20,22 +23,29 @@ namespace rasterizer {
         TEXTURE = 1 << 1,
     };
 
+    // TODO: Rename coloring -> ColorShader
     typedef std::function<color_t(const glm::vec3&, const glm::float32_t&)> coloring;
 
     class Canvas {
     public:
         const std::uint32_t width, height;
 
-        Canvas(const std::uint32_t width, const std::uint32_t height) : width(width),
-                                                                        height(height) {
+        Canvas(const std::uint32_t width, const std::uint32_t height,
+               const RenderContext& context) : width(width), height(height) {
+            SDL_Texture* rawFramebufferTexture = createFramebufferTexture(context.renderer.get(), width, height);
+            if (rawFramebufferTexture == nullptr) {
+                throw std::runtime_error("Failed to initialize Canvas.frambufferTexture");
+            }
+            framebufferTexture.reset(rawFramebufferTexture);
+
             colorBuffer = createColorBuffer(width, height);
             if (colorBuffer == nullptr) {
-                throw std::runtime_error("Failed to create Canvas");
+                throw std::runtime_error("Failed to create Canvas.colorBuffer");
             }
 
             depthBuffer = createDepthBuffer(width, height);
             if (depthBuffer == nullptr) {
-                throw std::runtime_error("Failed to create Canvas");
+                throw std::runtime_error("Failed to create Canvas.depthBuffer");
             }
         }
 
@@ -50,8 +60,12 @@ namespace rasterizer {
             }
         }
 
-        explicit operator const color_t*() const {
+        const color_t* framebuffer() const {
             return colorBuffer;
+        }
+
+        SDL_Texture* texture() const {
+            return framebufferTexture.get();
         }
 
         void drawPixel(const std::int32_t row, const std::int32_t column, const color_t color) const {
@@ -215,6 +229,7 @@ namespace rasterizer {
         }
 
     private:
+        std::unique_ptr<SDL_Texture, decltype(&SDL_DestroyTexture)> framebufferTexture{nullptr, SDL_DestroyTexture};
         /*
          * Intentionally handled in a C-like manner for learning purposes.
          * The C++ approach I would use is boost::static_vector<color_t>
@@ -225,6 +240,23 @@ namespace rasterizer {
 
         std::uint32_t polygonModeMask = static_cast<std::uint32_t>(PolygonMode::LINE);
         std::uint32_t fillModeMask = static_cast<std::uint32_t>(FillMode::SOLID);
+
+        static SDL_Texture* createFramebufferTexture(SDL_Renderer* renderer,
+                                                     const std::uint32_t width,
+                                                     const std::uint32_t height) {
+            SDL_Texture* framebufferTexture = SDL_CreateTexture(renderer,
+                                                                SDL_PIXELFORMAT_RGBA8888,
+                                                                SDL_TEXTUREACCESS_STREAMING,
+                                                                static_cast<std::int32_t>(width),
+                                                                static_cast<std::int32_t>(height));
+
+            if (framebufferTexture == nullptr) {
+                std::print(std::cerr, "SDL_CreateTexture Error: {}\n", SDL_GetError());
+                return nullptr;
+            }
+
+            return framebufferTexture;
+        }
 
         static color_t* createColorBuffer(const std::uint32_t width, const std::uint32_t height) {
             return static_cast<color_t*>(std::calloc(width * height, sizeof(color_t)));
