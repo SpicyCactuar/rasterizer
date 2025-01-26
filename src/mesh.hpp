@@ -23,7 +23,7 @@ namespace rasterizer {
         const std::vector<std::uint32_t> faceIndices;
         const std::vector<std::uint32_t> uvIndices;
 
-        glm::vec3 eulerRotation{0.0f};
+        glm::vec3 rotation{0.0f};
         glm::vec3 scale{1.0f};
         glm::vec3 translation{0.0f};
 
@@ -58,12 +58,12 @@ namespace rasterizer {
         }
 
         glm::mat4 modelTransformation() const {
-            const glm::float32_t cosX = std::cos(eulerRotation.x);
-            const glm::float32_t sinX = std::sin(eulerRotation.x);
-            const glm::float32_t cosY = std::cos(eulerRotation.y);
-            const glm::float32_t sinY = std::sin(eulerRotation.y);
-            const glm::float32_t cosZ = std::cos(eulerRotation.z);
-            const glm::float32_t sinZ = std::sin(eulerRotation.z);
+            const glm::float32_t cosX = std::cos(rotation.x);
+            const glm::float32_t sinX = std::sin(rotation.x);
+            const glm::float32_t cosY = std::cos(rotation.y);
+            const glm::float32_t sinY = std::sin(rotation.y);
+            const glm::float32_t cosZ = std::cos(rotation.z);
+            const glm::float32_t sinZ = std::sin(rotation.z);
 
             // The GLM memory layout is row based
             // We need to transpose the elements compared to the original rotation matrices

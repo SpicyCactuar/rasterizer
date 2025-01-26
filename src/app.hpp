@@ -30,13 +30,12 @@ namespace rasterizer {
         bool isRunning = false;
 
         explicit Application(const std::string_view& title)
-            : scene({rasterizer::parseObj("../assets/cube.obj")}),
-              context(title),
+            : context(title),
               canvas(context.windowWidth / resolutionScale, context.windowHeight / resolutionScale, context),
               frustum(
                   static_cast<glm::float32_t>(canvas.width), static_cast<glm::float32_t>(canvas.height),
                   std::numbers::pi / 3.0f, // 60 degrees
-                  0.01f, 100.0f
+                  0.1f, 100.0f
               ) {
             isRunning = true;
         }
@@ -62,12 +61,6 @@ namespace rasterizer {
         }
 
         void update(const glm::float32_t delta) {
-            for (Mesh& mesh : scene.meshes) {
-                // mesh.eulerRotation += 0.6f * deltaTime;
-                // Put object in front of camera
-                mesh.translation.z = 5.0f;
-            }
-
             // Orientate frustum according to rotation
             auto cameraRotation = glm::rotate(glm::identity<glm::mat4>(), frustum.yaw, up);
             cameraRotation = glm::rotate(cameraRotation, frustum.pitch, right);
@@ -181,6 +174,7 @@ namespace rasterizer {
             scene.unlock();
         }
 
+        // TODO: Simplify
         std::vector<Triangle> computeTrianglesToRender() const {
             std::vector<Triangle> trianglesToRender;
             trianglesToRender.reserve(scene.meshes.size());
@@ -195,7 +189,8 @@ namespace rasterizer {
 
             // Offset the camera position in the direction where the camera is pointing at
             const auto view = frustum.view(frustum.eye + frustum.forward, up);
-            for (auto& mesh : scene.meshes) {
+            for (std::size_t m = 0; m < scene.meshes.size(); ++m) {
+                const auto& mesh = scene.meshes[m];
                 for (std::size_t face = 0; face < mesh.facesAmount(); ++face) {
                     // Extract and transform vertices
                     const auto meshModel = mesh.modelTransformation();
@@ -255,7 +250,7 @@ namespace rasterizer {
                             },
                             .uvs = {clippedPolygon.uvs[0], clippedPolygon.uvs[v + 1], clippedPolygon.uvs[v + 2]},
                             .solidColor = scene.light.modulateSurfaceColor(triangleColor, normal),
-                            .surface = scene.meshSurface.get()
+                            .surface = scene.meshSurfaces[m].get()
                         });
                     }
                 }

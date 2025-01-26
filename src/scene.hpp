@@ -5,49 +5,60 @@
 
 #include "mesh.hpp"
 #include "light.hpp"
+#include "obj.hpp"
 #include "texture.hpp"
 
 namespace rasterizer {
     class Scene {
     public:
         std::vector<Mesh> meshes;
+        std::vector<std::shared_ptr<Surface>> meshSurfaces;
         DirectionalLight light{{0.0f, 0.0f, 1.0f}};
 
-        std::unique_ptr<Surface> cubeSurface;
-        std::unique_ptr<Surface> brickSurface;
-        std::unique_ptr<Surface> meshSurface;
+        explicit Scene()
+            : meshes({
+                  rasterizer::parseObj("../assets/runway.obj"),
+                  rasterizer::parseObj("../assets/f22.obj"),
+                  rasterizer::parseObj("../assets/efa.obj"),
+                  rasterizer::parseObj("../assets/f117.obj"),
+              }),
+              surfaces({
+                  std::shared_ptr<Surface>(rasterizer::loadPngSurface("../assets/runway.png")),
+                  std::shared_ptr<Surface>(rasterizer::loadPngSurface("../assets/f22.png")),
+                  std::shared_ptr<Surface>(rasterizer::loadPngSurface("../assets/efa.png")),
+                  std::shared_ptr<Surface>(rasterizer::loadPngSurface("../assets/f117.png"))
+              }) {
+            meshSurfaces = {
+                surfaces[0],
+                surfaces[1],
+                surfaces[2],
+                surfaces[3]
+            };
 
-        explicit Scene(std::vector<Mesh> meshes) : meshes(std::move(meshes)) {
-            Surface* rawCubeSurface = loadPngSurface("../assets/cube.png");
-            if (rawCubeSurface == nullptr) {
-                throw std::runtime_error("Failed to load cube surface");
-            }
-            cubeSurface.reset(rawCubeSurface);
+            meshes[0].translation = {0.0f, -1.5f, 23.0f};
+            meshes[1].translation = {0.0f, -1.3f, 5.0f};
+            meshes[2].translation = {-2.0f, -1.3f, 9.0f};
+            meshes[3].translation = {2.0f, -1.3f, 9.0f};
 
-            Surface* rawBrickSurface = loadDataSurface(reinterpret_cast<const std::uint32_t*>(brickData.data()),
-                                                       brickWidth, brickHeight);
-            if (rawBrickSurface == nullptr) {
-                throw std::runtime_error("Failed to load brick surface");
-            }
-            brickSurface.reset(rawBrickSurface);
-
-            Surface* rawMeshSurface = loadPngSurface("../assets/cube.png");
-            if (rawMeshSurface == nullptr) {
-                throw std::runtime_error("Failed to load mesh surface");
-            }
-            meshSurface.reset(rawMeshSurface);
+            meshes[0].rotation = {0.0f, 0.0f, 0.0f};
+            meshes[1].rotation = {0.0f, -std::numbers::pi / 2.0f, 0.0f};
+            meshes[2].rotation = {0.0f, -std::numbers::pi / 2.0f, 0.0f};
+            meshes[3].rotation = {0.0f, -std::numbers::pi / 2.0f, 0.0f};
         }
 
         void lock() const {
-            brickSurface->lock();
-            cubeSurface->lock();
-            meshSurface->lock();
+            for (const auto& surface : surfaces) {
+                surface->lock();
+            }
         }
 
         void unlock() const {
-            cubeSurface->unlock();
-            brickSurface->unlock();
-            meshSurface->unlock();
+            for (const auto& surface : surfaces) {
+                surface->unlock();
+            }
         }
+
+    private:
+        std::vector<std::shared_ptr<Surface>> surfaces;
     };
 }
