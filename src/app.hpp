@@ -10,8 +10,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "color.hpp"
 #include "scene.hpp"
-#include "obj.hpp"
 #include "frustum.hpp"
 #include "canvas.hpp"
 #include "context.hpp"
@@ -174,7 +174,6 @@ namespace rasterizer {
             scene.unlock();
         }
 
-        // TODO: Simplify
         std::vector<Triangle> computeTrianglesToRender() const {
             std::vector<Triangle> trianglesToRender;
             trianglesToRender.reserve(scene.meshes.size());
@@ -192,7 +191,7 @@ namespace rasterizer {
             for (std::size_t m = 0; m < scene.meshes.size(); ++m) {
                 const auto& mesh = scene.meshes[m];
                 for (std::size_t face = 0; face < mesh.facesAmount(); ++face) {
-                    // Extract and transform vertices
+                    // Extract vertices
                     const auto meshModel = mesh.modelTransformation();
                     auto [v0, v1, v2] = std::apply(
                         [](const auto&... vertices) {
@@ -200,15 +199,15 @@ namespace rasterizer {
                         },
                         mesh[face].vertices
                     );
+
+                    // Transform to View-space
                     v0 = toViewSpace(v0, meshModel, view); /*    v0     */
                     v1 = toViewSpace(v1, meshModel, view); /*  /    \   */
                     v2 = toViewSpace(v2, meshModel, view); /* v2 --- v1 */
 
-                    const auto e01 = glm::normalize(glm::vec3(v1 - v0));
-                    const auto e02 = glm::normalize(glm::vec3(v2 - v0));
-                    const auto normal = glm::normalize(glm::cross(e01, e02));
-
                     // Cull if necessary
+                    const auto normal = computeNormal(v0, v1, v2);
+
                     if (backFaceCulling) {
                         // Points are in View-space, camera position in View-space is always [0 0 0]
                         // [0 0 0] - v = -v
@@ -220,36 +219,22 @@ namespace rasterizer {
                         }
                     }
 
-                    // Compute synthetic color from face index
-                    const color_t colorSeed = face * 2654435761u;
-                    constexpr color_t a = 0x000000FF;
-                    const color_t r = colorSeed & 0xFF000000; // 0xRR000000
-                    const color_t g = colorSeed & 0x00FF0000; // 0x00GG0000
-                    const color_t b = colorSeed & 0x0000FF00; // 0x0000BB00
-                    const color_t triangleColor = r | g | b | a;
-
                     // Clip and add clipped triangles to result
-                    const auto clippedPolygon =
-                            frustum.clipPolygon(Polygon::fromTriangle({v0, v1, v2}, mesh[face].uvs));
+                    const auto clippedPolygon = frustum.clipPolygon(
+                        Polygon::fromTriangle({v0, v1, v2}, mesh[face].uvs));
 
-                    // Resulting polygon might have less than 2 vertices that were not clipped, skip those
-                    if (clippedPolygon.verticesAmount <= 2) {
-                        continue;
-                    }
+                    for (std::size_t t = 0; t < clippedPolygon.trianglesAmount(); ++t) {
+                        const auto [pv0, pv1, pv2, puv0, puv1, puv2] = clippedPolygon[t];
 
-                    // We extract triangles as triangle strip with center at index 0, therefore:
-                    // facesAmount == polygon.verticesAmount - 2
-                    // Assumes polygon has at least 3 vertices (a non-clipped triangle)
-                    for (size_t v = 0; v < clippedPolygon.verticesAmount - 2; ++v) {
                         trianglesToRender.emplace_back(Triangle{
                             .vertices = {
                                 // These are points, not vectors => w = 1.0f
-                                toScreenSpace(glm::vec4{clippedPolygon.vertices[0], 1.0f}, projection, viewport),
-                                toScreenSpace(glm::vec4{clippedPolygon.vertices[v + 1], 1.0f}, projection, viewport),
-                                toScreenSpace(glm::vec4{clippedPolygon.vertices[v + 2], 1.0f}, projection, viewport)
+                                toScreenSpace(glm::vec4{pv0, 1.0f}, projection, viewport),
+                                toScreenSpace(glm::vec4{pv1, 1.0f}, projection, viewport),
+                                toScreenSpace(glm::vec4{pv2, 1.0f}, projection, viewport)
                             },
-                            .uvs = {clippedPolygon.uvs[0], clippedPolygon.uvs[v + 1], clippedPolygon.uvs[v + 2]},
-                            .solidColor = scene.light.modulateSurfaceColor(triangleColor, normal),
+                            .uvs = {puv0, puv1, puv2},
+                            .solidColor = scene.light.modulateSurfaceColor(rasterizer::randomColor(face), normal),
                             .surface = scene.meshSurfaces[m].get()
                         });
                     }

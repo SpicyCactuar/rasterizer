@@ -7,7 +7,7 @@
 #include <SDL2/SDL_render.h>
 #include <glm/glm.hpp>
 
-#include "common.hpp"
+#include "color.hpp"
 #include "context.hpp"
 #include "polygon.hpp"
 

@@ -4,7 +4,7 @@
 
 #include <SDL2/SDL_image.h>
 
-#include "common.hpp"
+#include "color.hpp"
 
 namespace rasterizer {
     // Differentiate Surface from Texture
