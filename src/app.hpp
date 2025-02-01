@@ -88,6 +88,7 @@ namespace rasterizer {
         Frustum frustum;
 
         bool backFaceCulling = true;
+        RasterizationRule currentRule = RasterizationRule::DDA;
 
         void processKeypress(const SDL_Keycode keycode, const glm::float32_t delta) {
             switch (keycode) {
@@ -108,13 +109,13 @@ namespace rasterizer {
                     canvas.enable(PolygonMode::FILL);
                     canvas.disable(PolygonMode::LINE);
                     canvas.disable(PolygonMode::POINT);
-                    canvas.set(FillMode::SOLID);
+                    canvas.set(FillMode::VERTEX_COLOR);
                     break;
                 case SDLK_4:
                     canvas.enable(PolygonMode::FILL);
                     canvas.enable(PolygonMode::LINE);
                     canvas.disable(PolygonMode::POINT);
-                    canvas.set(FillMode::SOLID);
+                    canvas.set(FillMode::VERTEX_COLOR);
                     break;
                 case SDLK_5:
                     canvas.enable(PolygonMode::FILL);
@@ -127,6 +128,12 @@ namespace rasterizer {
                     canvas.disable(PolygonMode::LINE);
                     canvas.disable(PolygonMode::POINT);
                     canvas.set(FillMode::TEXTURE);
+                    break;
+                case SDLK_x:
+                    canvas.set(RasterizationRule::DDA);
+                    break;
+                case SDLK_z:
+                    canvas.set(RasterizationRule::TOP_LEFT);
                     break;
                 case SDLK_c:
                     backFaceCulling = !backFaceCulling;
@@ -226,6 +233,8 @@ namespace rasterizer {
                     for (std::size_t t = 0; t < clippedPolygon.trianglesAmount(); ++t) {
                         const auto [pv0, pv1, pv2, puv0, puv1, puv2] = clippedPolygon[t];
 
+                        const color_t surfaceColor = scene.light.modulateSurfaceColor(
+                            rasterizer::randomColor(face), normal);
                         trianglesToRender.emplace_back(Triangle{
                             .vertices = {
                                 // These are points, not vectors => w = 1.0f
@@ -234,7 +243,7 @@ namespace rasterizer {
                                 toScreenSpace(glm::vec4{pv2, 1.0f}, projection, viewport)
                             },
                             .uvs = {puv0, puv1, puv2},
-                            .solidColor = scene.light.modulateSurfaceColor(rasterizer::randomColor(face), normal),
+                            .colors = {surfaceColor, surfaceColor, surfaceColor},
                             .surface = scene.meshSurfaces[m].get()
                         });
                     }

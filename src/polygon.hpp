@@ -9,7 +9,7 @@ namespace rasterizer {
 
         const std::array<glm::vec4, 3> vertices;
         const std::array<glm::vec2, 3> uvs;
-        const color_t solidColor = defaultSolidColor;
+        const std::array<color_t, 3> colors;
         const Surface* surface = nullptr;
     };
 

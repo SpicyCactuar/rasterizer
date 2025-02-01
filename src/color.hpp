@@ -14,4 +14,26 @@ namespace rasterizer {
 
         return r | g | b | a;
     }
+
+    inline color_t interpolateColor(const glm::vec3& weights, const std::array<color_t, 3>& colors) {
+        const color_t r = static_cast<color_t>(
+            weights.x * (colors[0] & 0xFF000000) +
+            weights.y * (colors[1] & 0xFF000000) +
+            weights.z * (colors[2] & 0xFF000000)
+        );
+
+        const color_t g = static_cast<color_t>(
+            weights.x * (colors[0] & 0x00FF0000) +
+            weights.y * (colors[1] & 0x00FF0000) +
+            weights.z * (colors[2] & 0x00FF0000)
+        );
+
+        const color_t b = static_cast<color_t>(
+            weights.x * (colors[0] & 0x0000FF00) +
+            weights.y * (colors[1] & 0x0000FF00) +
+            weights.z * (colors[2] & 0x0000FF00)
+        );
+
+        return r & 0xFF000000 | g & 0x00FF0000 | b & 0x0000FF00 | 0x000000FF;
+    }
 }
