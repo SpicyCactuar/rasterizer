@@ -41,7 +41,7 @@ namespace rasterizer {
             this->windowWidth = static_cast<std::uint32_t>(windowWidth);
             this->windowHeight = static_cast<std::uint32_t>(windowHeight);
 
-            std::print("Display size: {} x {}\n", windowWidth, windowHeight);
+            rasterizer::print("Display size: {} x {}\n", windowWidth, windowHeight);
         }
 
         ~RenderContext() {
@@ -72,14 +72,14 @@ namespace rasterizer {
 
     private:
         static bool initializeSDL() {
-            if (SDL_Init(SDL_INIT_EVERYTHING) != EXIT_SUCCESS) {
-                std::print("SDL_Init Error: %s\n", SDL_GetError());
+            if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != EXIT_SUCCESS) {
+                rasterizer::print("SDL_Init Error: {}\n", SDL_GetError());
                 return false;
             }
 
             // IMG_Init returns a bit mask
             if ((IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) != IMG_INIT_PNG) {
-                std::print("IMG_Init Error: %s\n", IMG_GetError());
+                rasterizer::print("IMG_Init Error: {}\n", IMG_GetError());
                 return false;
             }
 
@@ -87,9 +87,9 @@ namespace rasterizer {
             SDL_VERSION(&compiled);
             SDL_GetVersion(&linked);
 
-            std::print("Compiled against SDL version: {}.{}.{}\n",
+            rasterizer::print("Compiled against SDL version: {}.{}.{}\n",
                        compiled.major, compiled.minor, compiled.patch);
-            std::print("Linked SDL version: {}.{}.{}\n",
+            rasterizer::print("Linked SDL version: {}.{}.{}\n",
                        linked.major, linked.minor, linked.patch);
 
             return true;
@@ -114,10 +114,10 @@ namespace rasterizer {
                                                   SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                                   static_cast<std::int32_t>(windowWidth),
                                                   static_cast<std::int32_t>(windowHeight),
-                                                  SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALLOW_HIGHDPI);
+                                                  SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_OPENGL);
 
             if (window == nullptr) {
-                std::print(std::cerr, "SDL_CreateWindow Error: {}\n", SDL_GetError());
+                rasterizer::print(std::cerr, "SDL_CreateWindow Error: {}\n", SDL_GetError());
                 return nullptr;
             }
 
@@ -128,7 +128,7 @@ namespace rasterizer {
             SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
 
             if (renderer == nullptr) {
-                std::print(std::cerr, "SDL_CreateRenderer Error: {}\n", SDL_GetError());
+                rasterizer::print(std::cerr, "SDL_CreateRenderer Error: {}\n", SDL_GetError());
                 return nullptr;
             }
 

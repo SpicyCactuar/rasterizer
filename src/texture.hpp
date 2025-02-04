@@ -32,22 +32,22 @@ namespace rasterizer {
 
     static Surface* loadPngSurface(const std::filesystem::path& path) {
         if (!std::filesystem::exists(path) || path.extension() != ".png") {
-            std::print("File does not exist or is not .png: {}", path.string());
+            rasterizer::print("File does not exist or is not .png: {}", path.string());
             return nullptr;
         }
 
         SDL_Surface* originalSurface = IMG_Load(path.string().c_str());
         if (originalSurface == nullptr) {
-            std::print("Unable to load png image: {}\n", path.string());
-            std::print("IMG_Load Error: %s\n", IMG_GetError());
+            rasterizer::print("Unable to load png image: {}\n", path.string());
+            rasterizer::print("IMG_Load Error: {}\n", IMG_GetError());
             return nullptr;
         }
 
         // Enforce app format surface
         SDL_Surface* surface = SDL_ConvertSurfaceFormat(originalSurface, rasterizer::colorFormat, 0);
         if (surface == nullptr) {
-            std::print("Unable to convert png to RGBA: {}\n", path.string());
-            std::print("SDL_ConvertSurfaceFormat Error: %s\n", SDL_GetError());
+            rasterizer::print("Unable to convert png to RGBA: {}\n", path.string());
+            rasterizer::print("SDL_ConvertSurfaceFormat Error: {}\n", SDL_GetError());
             SDL_FreeSurface(originalSurface);
             return nullptr;
         }
@@ -74,16 +74,16 @@ namespace rasterizer {
         );
 
         if (originalSurface == nullptr) {
-            std::print("Unable to load data surface");
-            std::print("SDL_Surface Error: %s\n", SDL_GetError());
+            rasterizer::print("Unable to load data surface");
+            rasterizer::print("SDL_Surface Error: {}\n", SDL_GetError());
             return nullptr;
         }
 
         // Enforce app format surface
         SDL_Surface* surface = SDL_ConvertSurfaceFormat(originalSurface, rasterizer::colorFormat, 0);
         if (surface == nullptr) {
-            std::print("Unable to convert data to RGBA\n");
-            std::print("SDL_ConvertSurfaceFormat Error: %s\n", SDL_GetError());
+            rasterizer::print("Unable to convert data to RGBA\n");
+            rasterizer::print("SDL_ConvertSurfaceFormat Error: {}\n", SDL_GetError());
             SDL_FreeSurface(originalSurface);
             return nullptr;
         }

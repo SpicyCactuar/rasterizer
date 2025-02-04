@@ -1,0 +1,66 @@
+<!-- Based on: https://github.com/emscripten-core/emscripten/blob/main/src/shell_minimal.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Rasterizer</title>
+    <style>
+        .emscripten {
+            padding-right: 0;
+            margin-left: auto;
+            margin-right: auto;
+            display: block;
+        }
+
+        body {
+            margin: 0;
+            background: black;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
+        canvas.emscripten {
+            border: 0px none;
+            background-color: black;
+        }
+    </style>
+</head>
+<body>
+<div>
+    <canvas class="emscripten" id="canvas" oncontextmenu="return false;" tabindex=-1></canvas>
+</div>
+<script type="text/javascript">
+    var Module = {
+        canvas: (() => {
+            var canvas = document.getElementById('canvas');
+
+            // As a default initial behavior, pop up an alert when webgl context is lost.
+            // See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
+            canvas.addEventListener("webglcontextlost", (e) => {
+                alert('WebGL context lost. You will need to reload the page.');
+                e.preventDefault();
+            }, false);
+
+            return canvas;
+        })(),
+        setStatus: (text) => {
+            if (text) console.log(text)
+        },
+    };
+    window.onerror = () => {
+        console.log('Exception thrown');
+        Module.setStatus = (text) => {
+            if (text) console.error('[post-exception status] ' + text);
+        };
+    };
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>

@@ -225,7 +225,7 @@ namespace rasterizer {
                                                                 static_cast<std::int32_t>(height));
 
             if (framebufferTexture == nullptr) {
-                std::print(std::cerr, "SDL_CreateTexture Error: {}\n", SDL_GetError());
+                rasterizer::print(std::cerr, "SDL_CreateTexture Error: {}\n", SDL_GetError());
                 return nullptr;
             }
 
@@ -538,8 +538,8 @@ namespace rasterizer {
                     return rasterizer::interpolateColor(weights, colors);
                 };
             } else {
-                return [&v0, &v1, &v2, &uv0, &uv1, &uv2, &surface](const glm::vec3& weights,
-                                                                   const glm::float32_t wReciprocal) {
+                return [&v0, &v1, &v2, &uv0, &uv1, &uv2, surface](const glm::vec3& weights,
+                                                                  const glm::float32_t wReciprocal) {
                     return textureColoring(v0, v1, v2, uv0, uv1, uv2, weights, wReciprocal, surface);
                 };
             }

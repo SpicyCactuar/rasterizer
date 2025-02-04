@@ -67,17 +67,17 @@ namespace rasterizer {
                     std::sscanf(line.c_str(), "v %f %f %f", &vertex[0], &vertex[1], &vertex[2]) == 3) {
                     vertices.emplace_back(vertex);
                 } else {
-                    std::print(std::cerr, "Failed to parse vertex line {}: {}", lineCount, line);
+                    rasterizer::print(std::cerr, "Failed to parse vertex line {}: {}", lineCount, line);
                 }
             } else if (line.starts_with("f ")) {
                 if (!parseFace(line, faceIndices, uvIndices)) {
-                    std::print(std::cerr, "Failed to parse face line {}: {}", lineCount, line);
+                    rasterizer::print(std::cerr, "Failed to parse face line {}: {}", lineCount, line);
                 }
             } else if (line.starts_with("vt ")) {
                 if (glm::vec2 uv; std::sscanf(line.c_str(), "vt %f %f", &uv[0], &uv[1]) == 2) {
                     uvs.emplace_back(uv);
                 } else {
-                    std::print(std::cerr, "Failed to parse uv line {}: {}", lineCount, line);
+                    rasterizer::print(std::cerr, "Failed to parse uv line {}: {}", lineCount, line);
                 }
             }
         }
