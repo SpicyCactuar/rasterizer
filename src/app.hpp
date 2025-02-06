@@ -17,6 +17,7 @@
 #include "context.hpp"
 #include "mesh.hpp"
 #include "polygon.hpp"
+#include "ui.hpp"
 
 namespace rasterizer {
 #ifndef RESOLUTION_SCALE
@@ -48,6 +49,12 @@ namespace rasterizer {
             SDL_Event event;
             SDL_PollEvent(&event);
 
+            // Prioritize UI
+            if (rasterizer::ui::processInput(&event)) {
+                return;
+            }
+
+            // Game loop input logic
             switch (event.type) {
                 case SDL_QUIT:
                     isRunning = false;
@@ -68,7 +75,7 @@ namespace rasterizer {
         }
 
         void render() const {
-            context.clear();
+            context.newFrame();
             canvas.clear();
             canvas.drawGrid();
             drawScene();

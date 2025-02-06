@@ -17,16 +17,16 @@ namespace rasterizer {
 
         explicit Scene()
             : meshes({
-                  rasterizer::parseObj("../assets/runway.obj"),
-                  rasterizer::parseObj("../assets/f22.obj"),
-                  rasterizer::parseObj("../assets/efa.obj"),
-                  rasterizer::parseObj("../assets/f117.obj"),
+                  rasterizer::parseObj("../assets/mesh/runway.obj"),
+                  rasterizer::parseObj("../assets/mesh/f22.obj"),
+                  rasterizer::parseObj("../assets/mesh/efa.obj"),
+                  rasterizer::parseObj("../assets/mesh/f117.obj"),
               }),
               surfaces({
-                  std::shared_ptr<Surface>(rasterizer::loadPngSurface("../assets/runway.png")),
-                  std::shared_ptr<Surface>(rasterizer::loadPngSurface("../assets/f22.png")),
-                  std::shared_ptr<Surface>(rasterizer::loadPngSurface("../assets/efa.png")),
-                  std::shared_ptr<Surface>(rasterizer::loadPngSurface("../assets/f117.png"))
+                  std::shared_ptr<Surface>(rasterizer::loadPngSurface("../assets/mesh/runway.png")),
+                  std::shared_ptr<Surface>(rasterizer::loadPngSurface("../assets/mesh/f22.png")),
+                  std::shared_ptr<Surface>(rasterizer::loadPngSurface("../assets/mesh/efa.png")),
+                  std::shared_ptr<Surface>(rasterizer::loadPngSurface("../assets/mesh/f117.png"))
               }) {
             meshSurfaces = {
                 surfaces[0],

@@ -122,3 +122,8 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 CMakeUserPresets.json
+
+# Dear ImGui artifacts
+# https://github.com/ocornut/imgui/blob/v1.91.8/.gitignore
+imgui.ini
+imgui*.ini

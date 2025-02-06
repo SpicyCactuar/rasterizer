@@ -7,6 +7,8 @@
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_image.h>
 
+#include "ui.hpp"
+
 namespace rasterizer {
     static constexpr std::uint32_t defaultWindowWidth = 1600, defaultWindowHeight = 1075;
 
@@ -42,21 +44,33 @@ namespace rasterizer {
             this->windowHeight = static_cast<std::uint32_t>(windowHeight);
 
             rasterizer::print("Display size: {} x {}\n", windowWidth, windowHeight);
+
+            rasterizer::ui::initialize(window.get(), renderer.get());
         }
 
         ~RenderContext() {
+            rasterizer::ui::destroy();
             // Field destructors are called before this body
             // Therefore, quitSDL is executed at the end
             quitSDL();
         }
 
-        void clear() const {
+        void newFrame() const {
+            // Clear renderer
+            const auto& io = ImGui::GetIO();
+            SDL_RenderSetScale(renderer.get(), io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
             SDL_SetRenderDrawColor(renderer.get(), 0, 0, 0, 255);
             SDL_RenderClear(renderer.get());
+
+            // UI new frame
+            rasterizer::ui::newFrame();
         }
 
         void render(SDL_Texture* framebufferTexture,
                     const color_t* framebuffer, const std::uint32_t framebufferStride) const {
+            rasterizer::ui::render();
+
+            // Render frame
             const auto update = SDL_UpdateTexture(framebufferTexture, nullptr,
                                                   framebuffer, static_cast<int>(sizeof(color_t) * framebufferStride));
             const auto renderCopy = SDL_RenderCopy(renderer.get(), framebufferTexture, nullptr, nullptr);
@@ -67,6 +81,7 @@ namespace rasterizer {
         }
 
         void present() const {
+            rasterizer::ui::present(renderer.get());
             SDL_RenderPresent(renderer.get());
         }
 
@@ -88,9 +103,9 @@ namespace rasterizer {
             SDL_GetVersion(&linked);
 
             rasterizer::print("Compiled against SDL version: {}.{}.{}\n",
-                       compiled.major, compiled.minor, compiled.patch);
+                              compiled.major, compiled.minor, compiled.patch);
             rasterizer::print("Linked SDL version: {}.{}.{}\n",
-                       linked.major, linked.minor, linked.patch);
+                              linked.major, linked.minor, linked.patch);
 
             return true;
         }

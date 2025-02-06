@@ -22,8 +22,26 @@ find_package(SDL2 REQUIRED)
 find_package(SDL2_image REQUIRED)
 find_package(glm CONFIG REQUIRED)
 
-# Link SDL2 library
-target_link_libraries(rasterizer PRIVATE SDL2::SDL2 SDL2_image::SDL2_image)
+# Set the external dependencies directories
+set(EXTERNAL_DIR "${CMAKE_SOURCE_DIR}/external")
+set(IMGUI_DIR "${EXTERNAL_DIR}/imgui")
+
+# Add ImGui as a library
+include_directories(${IMGUI_DIR})
+add_library(imgui STATIC
+        ${IMGUI_DIR}/imgui.cpp
+        ${IMGUI_DIR}/imgui_draw.cpp
+        ${IMGUI_DIR}/imgui_tables.cpp
+        ${IMGUI_DIR}/imgui_widgets.cpp
+        ${IMGUI_DIR}/imgui_demo.cpp
+        ${IMGUI_DIR}/backends/imgui_impl_sdl2.cpp
+        ${IMGUI_DIR}/backends/imgui_impl_sdlrenderer2.cpp
+)
+
+target_include_directories(imgui PRIVATE ${IMGUI_DIR} ${IMGUI_DIR}/backends)
+
+# Link libraries
+target_link_libraries(rasterizer PRIVATE SDL2::SDL2 SDL2_image::SDL2_image imgui)
 
 # Add target to executable name
 string(TOLOWER "${CMAKE_BUILD_TYPE}" BUILD_TYPE_LOWER)
