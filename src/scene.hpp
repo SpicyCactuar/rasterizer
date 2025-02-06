@@ -13,7 +13,7 @@ namespace rasterizer {
     public:
         std::vector<Mesh> meshes;
         std::vector<std::shared_ptr<Surface>> meshSurfaces;
-        DirectionalLight light{{0.0f, 0.0f, 1.0f}};
+        DirectionalLight light{{0.0f, -1.0f, 0.0f}};
 
         explicit Scene()
             : meshes({
