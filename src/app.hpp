@@ -79,6 +79,11 @@ namespace rasterizer {
             canvas.clear();
             canvas.drawGrid();
             drawScene();
+            rasterizer::ui::render(frustum.eye, frustum.forward, backFaceCulling,
+                                   canvas.isEnabled(PolygonMode::POINT),
+                                   canvas.isEnabled(PolygonMode::LINE),
+                                   canvas.isEnabled(PolygonMode::FILL),
+                                   canvas.fillModeIndex(), canvas.rasterizationRuleIndex());
             context.render(canvas.texture(), canvas.framebuffer(), canvas.width);
             context.present();
         }

@@ -201,6 +201,24 @@ namespace rasterizer {
             rasterizationRuleMask = static_cast<std::uint32_t>(rule);
         }
 
+        bool isEnabled(PolygonMode mode) const {
+            return polygonModeMask & static_cast<std::uint32_t>(mode);
+        }
+
+        std::int32_t fillModeIndex() const {
+            // Only 2 possibilities, subtract 1 to index
+            return (fillModeMask & static_cast<std::uint32_t>(FillMode::VERTEX_COLOR)
+                        ? static_cast<std::int32_t>(FillMode::VERTEX_COLOR)
+                        : static_cast<std::int32_t>(FillMode::TEXTURE)) - 1;
+        }
+
+        std::int32_t rasterizationRuleIndex() const {
+            // Only 2 possibilities, subtract 1 to index
+            return (rasterizationRuleMask & static_cast<std::uint32_t>(RasterizationRule::DDA)
+                        ? static_cast<std::int32_t>(RasterizationRule::DDA)
+                        : static_cast<std::int32_t>(RasterizationRule::TOP_LEFT)) - 1;
+        }
+
     private:
         std::unique_ptr<SDL_Texture, decltype(&SDL_DestroyTexture)> framebufferTexture{nullptr, SDL_DestroyTexture};
         /*
@@ -211,8 +229,9 @@ namespace rasterizer {
         color_t* colorBuffer = nullptr;
         glm::float32_t* depthBuffer = nullptr;
 
-        std::uint32_t polygonModeMask = static_cast<std::uint32_t>(PolygonMode::LINE);
-        std::uint32_t fillModeMask = static_cast<std::uint32_t>(FillMode::VERTEX_COLOR);
+        std::uint32_t polygonModeMask = static_cast<std::uint32_t>(PolygonMode::FILL) |
+                                        static_cast<std::uint32_t>(PolygonMode::LINE);
+        std::uint32_t fillModeMask = static_cast<std::uint32_t>(FillMode::TEXTURE);
         std::uint32_t rasterizationRuleMask = static_cast<std::uint32_t>(RasterizationRule::DDA);
 
         static SDL_Texture* createFramebufferTexture(SDL_Renderer* renderer,

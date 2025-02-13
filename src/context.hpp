@@ -68,8 +68,6 @@ namespace rasterizer {
 
         void render(SDL_Texture* framebufferTexture,
                     const color_t* framebuffer, const std::uint32_t framebufferStride) const {
-            rasterizer::ui::render();
-
             // Render frame
             const auto update = SDL_UpdateTexture(framebufferTexture, nullptr,
                                                   framebuffer, static_cast<int>(sizeof(color_t) * framebufferStride));

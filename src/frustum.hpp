@@ -43,10 +43,13 @@ namespace rasterizer {
         }
 
         glm::mat4 view(const glm::vec3& target, const glm::vec3& up) const {
+            // lookAt matrix
+            // https://learnopengl.com/Getting-Started/Camera
             const glm::vec3 forward = glm::normalize(target - eye);
             const glm::vec3 right = glm::normalize(glm::cross(up, forward));
             const glm::vec3 upward = glm::cross(forward, right);
 
+            // Transpose values to account for GLM row-based memory layout
             return {
                 right.x, upward.x, forward.x, 0.0f,
                 right.y, upward.y, forward.y, 0.0f,
