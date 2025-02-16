@@ -84,7 +84,7 @@ Afterwards, navigate to `http://localhost:8000/rasterizer-wasm.html` with the br
 
 | Key(s)          | Action                                 |
 |-----------------|----------------------------------------|
-| `↑ / ↓ / ← / →` | Move frustum eye around                |
+| `W / A / S / D` | Move frustum eye around                |
 | `↑ / ↓ / ← / →` | Rotate frustum forward direction       |
 | `C`             | Toggle backface culling                |
 | `X / Z`         | DDA / Top-Left rasterization           |
